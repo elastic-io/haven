@@ -33,55 +33,6 @@ func (api *RegistryAPI) Init(c *config.Config) {
 	}
 }
 
-// 修改后的 dockerRegistryPathMiddleware 函数
-func (api *RegistryAPI) dockerRegistryPathMiddleware(c *fiber.Ctx) error {
-	path := c.Path()
-
-	// 处理 blob 上传初始化路由 (POST /v2/{repository}/blobs/uploads/)
-	if c.Method() == "POST" && strings.HasSuffix(path, "/blobs/uploads/") {
-		repository := strings.TrimPrefix(path, "/v2/")
-		repository = strings.TrimSuffix(repository, "/blobs/uploads/")
-		c.Locals("repository", repository)
-		return c.Next()
-	}
-
-	// 其他路由处理保持不变...
-	// 处理清单路由
-	if strings.Contains(path, "/manifests/") {
-		parts := strings.Split(path, "/manifests/")
-		if len(parts) == 2 {
-			repository := strings.TrimPrefix(parts[0], "/v2/")
-			reference := parts[1]
-			c.Locals("repository", repository)
-			c.Locals("reference", reference)
-		}
-	}
-
-	// 处理blob获取/删除路由
-	if strings.Contains(path, "/blobs/") && !strings.Contains(path, "/uploads/") {
-		parts := strings.Split(path, "/blobs/")
-		if len(parts) == 2 {
-			repository := strings.TrimPrefix(parts[0], "/v2/")
-			digest := parts[1]
-			c.Locals("repository", repository)
-			c.Locals("digest", digest)
-		}
-	}
-
-	// 处理blob上传路由
-	if strings.Contains(path, "/blobs/uploads/") && !strings.HasSuffix(path, "/uploads/") {
-		parts := strings.Split(path, "/blobs/uploads/")
-		if len(parts) == 2 {
-			repository := strings.TrimPrefix(parts[0], "/v2/")
-			uuid := parts[1]
-			c.Locals("repository", repository)
-			c.Locals("uuid", uuid)
-		}
-	}
-
-	return c.Next()
-}
-
 func (api *RegistryAPI) RegisterRoutes(app *fiber.App) {
 	log.Logger.Info("Registering Docker Registry API routes")
 
@@ -90,7 +41,7 @@ func (api *RegistryAPI) RegisterRoutes(app *fiber.App) {
 	app.Head("/v2/", api.handleAPIBase)
 
 	// 使用中间件处理所有 v2 路径
-	app.Use("/v2/", api.dockerRegistryPathMiddleware)
+	app.Use("/v2/", api.registryPathMiddleware)
 
 	// 使用通配符路由捕获所有可能的路径
 	app.Post("/v2/*", func(c *fiber.Ctx) error {
@@ -153,6 +104,55 @@ func (api *RegistryAPI) RegisterRoutes(app *fiber.App) {
 	app.Post("/v2/_gc", api.handleGarbageCollection)
 
 	app.Get("/v2/_debug/manifests", api.handleListManifests)
+}
+
+// registryPathMiddleware 函数
+func (api *RegistryAPI) registryPathMiddleware(c *fiber.Ctx) error {
+	path := c.Path()
+
+	// 处理 blob 上传初始化路由 (POST /v2/{repository}/blobs/uploads/)
+	if c.Method() == "POST" && strings.HasSuffix(path, "/blobs/uploads/") {
+		repository := strings.TrimPrefix(path, "/v2/")
+		repository = strings.TrimSuffix(repository, "/blobs/uploads/")
+		c.Locals("repository", repository)
+		return c.Next()
+	}
+
+	// 其他路由处理保持不变...
+	// 处理清单路由
+	if strings.Contains(path, "/manifests/") {
+		parts := strings.Split(path, "/manifests/")
+		if len(parts) == 2 {
+			repository := strings.TrimPrefix(parts[0], "/v2/")
+			reference := parts[1]
+			c.Locals("repository", repository)
+			c.Locals("reference", reference)
+		}
+	}
+
+	// 处理blob获取/删除路由
+	if strings.Contains(path, "/blobs/") && !strings.Contains(path, "/uploads/") {
+		parts := strings.Split(path, "/blobs/")
+		if len(parts) == 2 {
+			repository := strings.TrimPrefix(parts[0], "/v2/")
+			digest := parts[1]
+			c.Locals("repository", repository)
+			c.Locals("digest", digest)
+		}
+	}
+
+	// 处理blob上传路由
+	if strings.Contains(path, "/blobs/uploads/") && !strings.HasSuffix(path, "/uploads/") {
+		parts := strings.Split(path, "/blobs/uploads/")
+		if len(parts) == 2 {
+			repository := strings.TrimPrefix(parts[0], "/v2/")
+			uuid := parts[1]
+			c.Locals("repository", repository)
+			c.Locals("uuid", uuid)
+		}
+	}
+
+	return c.Next()
 }
 
 func (r *RegistryAPI) handleStartUpload(c *fiber.Ctx) error {
