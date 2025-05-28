@@ -5,7 +5,13 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/elastic-io/haven/internal/log"
 )
+
+func init() {
+	log.Init("", "debug")
+}
 
 func TestBoltS3Storage(t *testing.T) {
 	// 创建临时测试文件

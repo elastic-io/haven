@@ -3,10 +3,11 @@ package bolt
 import (
 	"encoding/json"
 	"fmt"
-	"log"
+
 	"strings"
 	"time"
 
+	"github.com/elastic-io/haven/internal/log"
 	"github.com/elastic-io/haven/internal/storage"
 	"go.etcd.io/bbolt"
 )
@@ -119,7 +120,7 @@ func (s *BoltS3Storage) BucketExists(bucket string) (bool, error) {
 
 // PutObject 存储对象
 func (s *BoltS3Storage) PutObject(bucket, key string, data []byte, metadata map[string]string) error {
-    log.Printf("Storage: Putting object %s in bucket %s, size: %d bytes", key, bucket, len(data))
+    log.Logger.Info("Storage: Putting object ", key, " in bucket ", bucket, " size: ", len(data), " bytes")
     
     // 对于大文件，我们需要分块存储
     const maxChunkSize = 10 * 1024 * 1024 // 10MB 块大小
@@ -148,7 +149,7 @@ func (s *BoltS3Storage) PutObject(bucket, key string, data []byte, metadata map[
         } else {
             // 对于大文件，分块存储
             chunks := (len(data) + maxChunkSize - 1) / maxChunkSize
-            log.Printf("Storing as chunked object: %d chunks", chunks)
+            log.Logger.Info("Storing as chunked object: ", chunks, " chunks")
             
             // 存储元数据，指示这是一个大文件
             chunkMeta := map[string]interface{}{
@@ -213,7 +214,7 @@ func (s *BoltS3Storage) PutObject(bucket, key string, data []byte, metadata map[
 
 // GetObject 获取对象
 func (s *BoltS3Storage) GetObject(bucket, key string) ([]byte, map[string]string, error) {
-    log.Printf("Storage: Getting object %s from bucket %s", key, bucket)
+    log.Logger.Info("Storage: Getting object ", key, " from bucket ", bucket)
     
     var data []byte
     var metadata map[string]string
@@ -249,7 +250,7 @@ func (s *BoltS3Storage) GetObject(bucket, key string) ([]byte, map[string]string
                     return fmt.Errorf("invalid size format in metadata")
                 }
                 
-                log.Printf("Reading chunked object: %d chunks, total size: %.0f bytes", int(chunks), size)
+                log.Logger.Info("Reading chunked object: ", int(chunks), " chunks, total size: ", fmt.Sprintf("%.0f bytes", size))
                 
                 // 预分配足够的空间
                 data = make([]byte, 0, int(size))
@@ -299,7 +300,7 @@ func (s *BoltS3Storage) GetObject(bucket, key string) ([]byte, map[string]string
 
 // DeleteObject 删除对象
 func (s *BoltS3Storage) DeleteObject(bucket, key string) error {
-    log.Printf("Storage: Deleting object %s from bucket %s", key, bucket)
+    log.Logger.Info("Storage: Deleting object ", key, " from bucket ", key, bucket)
     
     return s.db.Update(func(tx *bbolt.Tx) error {
         // 首先检查是否是分块存储的大文件
@@ -360,7 +361,7 @@ func (s *BoltS3Storage) DeleteObject(bucket, key string) error {
 
 // ListObjects 列出桶中的对象
 func (s *BoltS3Storage) ListObjects(bucket, prefix string) ([]string, error) {
-    log.Printf("Storage: Listing objects in bucket %s with prefix %s", bucket, prefix)
+    log.Logger.Info("Storage: Listing objects in bucket ", bucket, " with prefix ", prefix)
     
     var keys []string
     

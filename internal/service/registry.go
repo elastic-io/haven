@@ -1,13 +1,13 @@
 package service
 
 import (
-    "encoding/json"
-    "fmt"
-    "log"
-    "strings"
-    
-    "github.com/elastic-io/haven/internal/storage"
-    "github.com/elastic-io/haven/internal/utils"
+	"encoding/json"
+	"fmt"
+	"strings"
+
+	"github.com/elastic-io/haven/internal/log"
+	"github.com/elastic-io/haven/internal/storage"
+	"github.com/elastic-io/haven/internal/utils"
 )
 
 const (
@@ -52,11 +52,11 @@ func NewRegistryService(storage storage.S3) (RegistryService, error) {
 
 // PutManifest 存储镜像清单
 func (r *registryService) PutManifest(repository, reference string, data []byte, contentType string) error {
-    log.Printf("Registry: Putting manifest for %s:%s, size: %d bytes", repository, reference, len(data))
+    log.Logger.Info("Registry: Putting manifest for ", repository, ":", reference, " size: ", len(data), " bytes")
     
     // 计算清单的摘要
     digest := "sha256:" + utils.ComputeSHA256(data)
-    log.Printf("Manifest digest: %s", digest)
+    log.Logger.Info("Manifest digest: ", digest)
     
     // 准备存储数据
     storedManifest := struct {
@@ -84,17 +84,17 @@ func (r *registryService) PutManifest(repository, reference string, data []byte,
         return fmt.Errorf("failed to store manifest by digest: %w", err)
     }
     
-    log.Printf("Successfully stored manifest %s:%s with digest %s", repository, reference, digest)
+    log.Logger.Info("Successfully stored manifest ", repository, ":", reference, " with digest %s", digest)
     return nil
 }
 
 // GetManifest 获取镜像清单
 func (r *registryService) GetManifest(repository, reference string) ([]byte, string, error) {
-    log.Printf("Registry: Getting manifest for %s:%s", repository, reference)
+    log.Logger.Info("Registry: Getting manifest for ", repository, ":", reference)
     
     // 首先尝试直接通过完整键查找
     key := fmt.Sprintf("%s/%s/%s", repository, manifestsPath, reference)
-    log.Printf("Looking for key: %s", key)
+    log.Logger.Info("Looking for key: ", key)
     
     data, _, err := r.storage.GetObject(registryBucket, key)
     if err == nil {
@@ -108,13 +108,13 @@ func (r *registryService) GetManifest(repository, reference string) ([]byte, str
             return nil, "", fmt.Errorf("failed to unmarshal manifest data: %w", err)
         }
         
-        log.Printf("Found manifest, size: %d bytes", len(storedManifest.Data))
+        log.Logger.Info("Found manifest, size: ", len(storedManifest.Data), " bytes")
         return storedManifest.Data, storedManifest.ContentType, nil
     }
     
     // 如果是通过摘要查询但路径不匹配，尝试查找所有清单
     if strings.HasPrefix(reference, "sha256:") {
-        log.Printf("Searching for manifest by digest: %s", reference)
+        log.Logger.Info("Searching for manifest by digest: ", reference)
         
         // 列出所有清单
         prefix := fmt.Sprintf("%s/%s/", repository, manifestsPath)
@@ -136,7 +136,7 @@ func (r *registryService) GetManifest(repository, reference string) ([]byte, str
             }
             
             if err := json.Unmarshal(manifestData, &storedManifest); err != nil {
-                log.Printf("Warning: Failed to unmarshal manifest %s: %v", manifestKey, err)
+                log.Logger.Info("Warning: Failed to unmarshal manifest ", manifestKey, ": ", err)
                 continue
             }
             
@@ -145,7 +145,7 @@ func (r *registryService) GetManifest(repository, reference string) ([]byte, str
             
             // 检查摘要是否匹配
             if digest == reference {
-                log.Printf("Found manifest with matching digest: %s", manifestKey)
+                log.Logger.Info("Found manifest with matching digest: ", manifestKey)
                 return storedManifest.Data, storedManifest.ContentType, nil
             }
         }
@@ -154,9 +154,9 @@ func (r *registryService) GetManifest(repository, reference string) ([]byte, str
     // 列出所有可用的清单，以便调试
     prefix := fmt.Sprintf("%s/%s/", repository, manifestsPath)
     manifests, _ := r.storage.ListObjects(registryBucket, prefix)
-    log.Printf("Available manifests:")
+    log.Logger.Info("Available manifests:")
     for _, m := range manifests {
-        log.Printf("  - %s", m)
+        log.Logger.Info("  - ", m)
     }
     
     return nil, "", fmt.Errorf("manifest not found: %s:%s", repository, reference)
@@ -164,7 +164,7 @@ func (r *registryService) GetManifest(repository, reference string) ([]byte, str
 
 // DeleteManifest 删除镜像清单
 func (r *registryService) DeleteManifest(repository, reference string) error {
-    log.Printf("Registry: Deleting manifest for %s:%s", repository, reference)
+    log.Logger.Info("Registry: Deleting manifest for ", repository, ":", reference)
     
     // 首先获取清单数据，以便找到其摘要
     data, _, err := r.GetManifest(repository, reference)
@@ -185,13 +185,13 @@ func (r *registryService) DeleteManifest(repository, reference string) error {
         return fmt.Errorf("failed to delete manifest by digest: %w", err)
     }
     
-    log.Printf("Successfully deleted manifest %s:%s with digest %s", repository, reference, digest)
+    log.Logger.Info("Successfully deleted manifest ", repository, ":", reference, " with digest ", digest)
     return nil
 }
 
 // PutBlob 存储一个blob
 func (r *registryService) PutBlob(repository, digest string, data []byte) error {
-    log.Printf("Registry: Putting blob %s for repository %s, size: %d bytes", digest, repository, len(data))
+    log.Logger.Info("Registry: Putting blob ", digest, " for repository ", repository, " size: ", len(data), " bytes")
     
     key := fmt.Sprintf("%s/%s/%s", repository, blobsPath, digest)
     return r.storage.PutObject(registryBucket, key, data, nil)
@@ -199,7 +199,7 @@ func (r *registryService) PutBlob(repository, digest string, data []byte) error 
 
 // GetBlob 获取一个blob
 func (r *registryService) GetBlob(repository, digest string) ([]byte, error) {
-    log.Printf("Registry: Getting blob %s for repository %s", digest, repository)
+    log.Logger.Info("Registry: Getting blob ", digest, " for repository ", repository)
     
     key := fmt.Sprintf("%s/%s/%s", repository, blobsPath, digest)
     data, _, err := r.storage.GetObject(registryBucket, key)
@@ -208,7 +208,7 @@ func (r *registryService) GetBlob(repository, digest string) ([]byte, error) {
 
 // DeleteBlob 删除一个blob
 func (r *registryService) DeleteBlob(repository, digest string) error {
-    log.Printf("Registry: Deleting blob %s for repository %s", digest, repository)
+    log.Logger.Info("Registry: Deleting blob ", digest, " for repository ", repository)
     
     // 首先检查是否有清单引用此blob
     refs, err := r.GetManifestReferences(digest)
@@ -226,7 +226,7 @@ func (r *registryService) DeleteBlob(repository, digest string) error {
 
 // ListBlobs 列出所有blob
 func (r *registryService) ListBlobs() ([]string, error) {
-    log.Printf("Registry: Listing all blobs")
+    log.Logger.Info("Registry: Listing all blobs")
     
     // 列出所有blob对象
     blobs, err := r.storage.ListObjects(registryBucket, "/"+blobsPath+"/")
@@ -239,7 +239,7 @@ func (r *registryService) ListBlobs() ([]string, error) {
 
 // ListManifests 列出所有清单
 func (r *registryService) ListManifests() ([]string, error) {
-    log.Printf("Registry: Listing all manifests")
+    log.Logger.Info("Registry: Listing all manifests")
     
     // 列出所有清单对象
     manifests, err := r.storage.ListObjects(registryBucket, "/"+manifestsPath+"/")
@@ -252,7 +252,7 @@ func (r *registryService) ListManifests() ([]string, error) {
 
 // GetManifestReferences 获取引用某个blob的所有manifest
 func (r *registryService) GetManifestReferences(blobDigest string) ([]string, error) {
-    log.Printf("Registry: Getting manifest references for blob %s", blobDigest)
+    log.Logger.Info("Registry: Getting manifest references for blob ", blobDigest)
     
     var references []string
     
