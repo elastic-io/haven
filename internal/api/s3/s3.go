@@ -12,6 +12,7 @@ import (
 	"github.com/elastic-io/haven/internal/config"
 	"github.com/elastic-io/haven/internal/log"
 	"github.com/elastic-io/haven/internal/service"
+	"github.com/elastic-io/haven/internal/types"
 	"github.com/elastic-io/haven/internal/utils"
 	"github.com/gofiber/fiber/v2"
 )
@@ -158,7 +159,6 @@ func (api *S3API) handleS3Bucket(c *fiber.Ctx) error {
 	bucket := c.Params("bucket")
 
 	log.Logger.Info("S3 create bucket request: %s", bucket)
-
 	err := api.service.CreateBucket(bucket)
 	if err != nil {
 		if strings.Contains(err.Error(), "already exists") {
@@ -340,7 +340,7 @@ func (api *S3API) handleS3PutObject(c *fiber.Ctx) error {
 	})
 
 	// 创建对象
-	object := service.S3ObjectData{
+	object := types.S3ObjectData{
 		Key:          key,
 		Data:         data,
 		ContentType:  contentType,
@@ -350,7 +350,7 @@ func (api *S3API) handleS3PutObject(c *fiber.Ctx) error {
 	}
 
 	// 存储对象
-	err = api.service.PutObject(bucket, object)
+	err = api.service.PutObject(bucket, &object)
 	if err != nil {
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to store object")
 	}
@@ -499,9 +499,9 @@ func (api *S3API) handleS3CompleteMultipartUpload(c *fiber.Ctx) error {
 	}
 
 	// 构建分段信息
-	var parts []service.MultipartPart
+	var parts []types.MultipartPart
 	for _, part := range completeRequest.Parts {
-		parts = append(parts, service.MultipartPart{
+		parts = append(parts, types.MultipartPart{
 			PartNumber: part.PartNumber,
 			ETag:       part.ETag,
 		})

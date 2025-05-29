@@ -61,6 +61,16 @@ var runCommand = cli.Command{
 			Usage:  "TLS private key file path",
 			EnvVar: "REPO_KEY_FILE",
 		},
+		cli.StringFlag{
+			Name: "part-size, ps",
+			Value: "128M",
+			Usage: "Part size for multipart upload",
+		},
+		cli.StringFlag{
+			Name: "max-multipart, mm",
+			Value: "128M",
+			Usage: "Threshold for multipart upload",
+		},
 	},
 	Action: func(ctx *cli.Context) error {
 		if err := checkArgs(ctx, 1, exactArgs); err != nil {

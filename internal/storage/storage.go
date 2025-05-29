@@ -1,28 +1,39 @@
 package storage
 
 import (
-    "fmt"
+	"fmt"
+
+	"github.com/elastic-io/haven/internal/types"
 )
 
 // S3Storage 定义了基本的S3存储操作接口
-type S3 interface {
-    // 基本对象操作
-    PutObject(bucket, key string, data []byte, metadata map[string]string) error
-    GetObject(bucket, key string) ([]byte, map[string]string, error)
-    DeleteObject(bucket, key string) error
-    ListObjects(bucket, prefix string) ([]string, error)
-    
-    // 桶操作
-    CreateBucket(bucket string) error
-    DeleteBucket(bucket string) error
-    ListBuckets() ([]string, error)
-    BucketExists(bucket string) (bool, error)
-    
+type Storage interface {
+    S3
     // 关闭存储
     Close() error
 }
 
-type backend func(string) (S3, error)
+type S3 interface {
+    // 桶操作
+    CreateBucket(bucket string) error
+    DeleteBucket(bucket string) error
+    ListBuckets() ([]types.BucketInfo, error)
+    BucketExists(bucket string) (bool, error)
+
+    // 基本对象操作
+	GetObject(bucket, key string) (*types.S3ObjectData, error)
+	PutObject(bucket string, object *types.S3ObjectData) error
+	DeleteObject(bucket, key string) error
+	ListObjects(bucket, prefix, marker, delimiter string, maxKeys int) ([]types.S3ObjectInfo, []string, error)
+
+    // 分段上传
+	CreateMultipartUpload(bucket, key, contentType string, metadata map[string]string) (string, error)
+	UploadPart(bucket, key, uploadID string, partNumber int, data []byte) (string, error)
+	CompleteMultipartUpload(bucket, key, uploadID string, parts []types.MultipartPart) (string, error)
+	AbortMultipartUpload(bucket, key, uploadID string) error
+}
+
+type backend func(string) (Storage, error)
 var Backends = map[string]backend{}
 
 func BackendRegister(name string, be backend) {
@@ -32,7 +43,7 @@ func BackendRegister(name string, be backend) {
     Backends[name] = be
 }
 
-func NewStorage(engine, path string) (S3, error) {
+func NewStorage(engine, path string) (Storage, error) {
     if backend, ok := Backends[engine]; ok {
         return backend(path)
     }

@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/rand"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -40,4 +42,29 @@ func ComputeMD5(data []byte) string {
 func ComputeSHA256(data []byte) string {
     hash := sha256.Sum256(data)
     return fmt.Sprintf("%x", hash)
+}
+
+func ParseSize(s, unit string) (int, error) {
+	sz := strings.TrimRight(s, "gGmMkK")
+	if len(sz) == 0 {
+		return -1, fmt.Errorf("%q:can't parse as num[gGmMkK]:%w", s, strconv.ErrSyntax)
+	}
+	amt, err := strconv.ParseUint(sz, 0, 0)
+	if err != nil {
+		return -1, err
+	}
+	if len(s) > len(sz) {
+		unit = s[len(sz):]
+	}
+	switch unit {
+	case "G", "g":
+		return int(amt) << 30, nil
+	case "M", "m":
+		return int(amt) << 20, nil
+	case "K", "k":
+		return int(amt) << 10, nil
+	case "":
+		return int(amt), nil
+	}
+	return -1, fmt.Errorf("can not parse %q as num[gGmMkK]:%w", s, strconv.ErrSyntax)
 }

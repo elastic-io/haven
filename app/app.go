@@ -13,7 +13,7 @@ import (
 type App struct {
 	opts    *options.Options
 	dbname  string
-	storage storage.S3
+	storage storage.Storage
 	server  *api.Server
 }
 

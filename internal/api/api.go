@@ -26,23 +26,23 @@ func APIRegister(name string, api API) {
 
 type Server struct {
 	config *config.Config
-	app    *fiber.App
+	router *fiber.App
 	apis   []API
 }
 
 func New(c *config.Config) *Server {
 	s := &Server{
 		config: c,
-		app:    fiber.New(fiber.Config{
+		router: fiber.New(fiber.Config{
 			DisableStartupMessage: true,
-			BodyLimit: 10 * 1024 * 1024 * 1024, // 10GB
+			BodyLimit: c.BodyLimit,
 			StrictRouting: true,
     		CaseSensitive: true,
 		}),
 	}
 	
 	// 添加日志中间件
-	s.app.Use(loggingMiddleware())
+	s.router.Use(loggingMiddleware())
 	
 	return s
 }
@@ -52,17 +52,15 @@ func (s *Server) Init() error {
 		return fmt.Errorf("no APIs registered")
 	}
 	
-	apiMods := map[string]API{}
 	for _, mod := range s.config.Modules {
 		if api, ok := apis[mod]; ok {
-			apiMods[mod] = api
+			s.apis = append(s.apis, api)
 		}
 	}
 	
-	for _, api := range apiMods {
+	for _, api := range s.apis {
 		api.Init(s.config)
-		api.RegisterRoutes(s.app)
-		s.apis = append(s.apis, api)
+		api.RegisterRoutes(s.router)
 	}
 	
 	return nil
@@ -73,16 +71,16 @@ func (s *Server) Serve() error {
 	
 	if s.config.CertFile != "" && s.config.KeyFile != "" {
 		log.Logger.Info("Using HTTPS with certificate: ", s.config.CertFile, " and key: ", s.config.KeyFile)
-		return s.app.ListenTLS(s.config.Endpoint, s.config.CertFile, s.config.KeyFile)
+		return s.router.ListenTLS(s.config.Endpoint, s.config.CertFile, s.config.KeyFile)
 	}
 	
 	log.Logger.Warn("WARNING: Using insecure HTTP mode")
-	return s.app.Listen(s.config.Endpoint)
+	return s.router.Listen(s.config.Endpoint)
 }
 
 func (s *Server) Done() error {
-	if s.app != nil {
-		return s.app.Shutdown()
+	if s.router != nil {
+		return s.router.Shutdown()
 	}
 	return nil
 }
@@ -106,7 +104,7 @@ func loggingMiddleware() fiber.Handler {
 		
 		err := c.Next()
 		
-		log.Logger.Info(c.Method(), c.Path(), " completed in ", time.Since(start))
+		log.Logger.Info(c.Method(), " ", c.Path(), " completed in ", time.Since(start))
 		return err
 	}
 }

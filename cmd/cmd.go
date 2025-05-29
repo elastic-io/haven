@@ -57,6 +57,11 @@ func Execute(name, usage, version, commit string) {
 			Value: &cli.StringSlice{"registry", "s3"},
 			Usage: "set the module to load",
 		},
+		cli.StringFlag{
+			Name:  "body",
+			Value: "3G",
+			Usage: "set the body size",
+		},
 	}
 
 	app.Commands = []cli.Command{

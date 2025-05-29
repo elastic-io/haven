@@ -26,11 +26,14 @@ type RegistryAPI struct {
 }
 
 func (api *RegistryAPI) Init(c *config.Config) {
-	var err error
-	api.service, err = service.NewRegistryService(c.Storage)
+	service, err := service.NewRegistryService(c.Storage)
 	if err != nil {
 		panic(fmt.Errorf(err.Error()))
 	}
+	if err = service.Init(c); err != nil {
+		panic(fmt.Errorf(err.Error()))
+	}
+	api.service = service
 }
 
 func (api *RegistryAPI) RegisterRoutes(app *fiber.App) {
