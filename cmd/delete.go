@@ -5,8 +5,8 @@ import (
 )
 
 var deleteCommand = cli.Command{
-	Name:  "delete",
-	Usage: "",
+	Name:      "delete",
+	Usage:     "",
 	ArgsUsage: ``,
 	Flags: []cli.Flag{
 		cli.BoolFlag{

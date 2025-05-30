@@ -5,9 +5,9 @@ import (
 )
 
 var stateCommand = cli.Command{
-	Name:  "state",
-	Usage: "",
-	ArgsUsage: ``,
+	Name:        "state",
+	Usage:       "",
+	ArgsUsage:   ``,
 	Description: ``,
 	Action: func(context *cli.Context) error {
 		return nil

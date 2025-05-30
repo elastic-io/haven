@@ -15,9 +15,9 @@ import (
 )
 
 var runCommand = cli.Command{
-	Name:  "run",
-	Usage: "run a artifactory repository",
-	ArgsUsage: ``,
+	Name:        "run",
+	Usage:       "run a artifactory repository",
+	ArgsUsage:   ``,
 	Description: ``,
 	Flags: []cli.Flag{
 		cli.StringFlag{
@@ -62,12 +62,12 @@ var runCommand = cli.Command{
 			EnvVar: "REPO_KEY_FILE",
 		},
 		cli.StringFlag{
-			Name: "part-size, ps",
+			Name:  "part-size, ps",
 			Value: "128M",
 			Usage: "Part size for multipart upload",
 		},
 		cli.StringFlag{
-			Name: "max-multipart, mm",
+			Name:  "max-multipart, mm",
 			Value: "128M",
 			Usage: "Threshold for multipart upload",
 		},

@@ -112,12 +112,12 @@ func TestHandleS3Base(t *testing.T) {
 	// 断言
 	assert.NoError(t, err)
 	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
-	
+
 	// 验证响应内容
 	body, _ := io.ReadAll(resp.Body)
 	assert.Contains(t, string(body), "<Name>bucket1</Name>")
 	assert.Contains(t, string(body), "<Name>bucket2</Name>")
-	
+
 	mockService.AssertExpectations(t)
 }
 
@@ -135,7 +135,7 @@ func TestHandleS3Bucket(t *testing.T) {
 	// 断言
 	assert.NoError(t, err)
 	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
-	
+
 	mockService.AssertExpectations(t)
 }
 
@@ -153,7 +153,7 @@ func TestHandleS3BucketAlreadyExists(t *testing.T) {
 	// 断言
 	assert.NoError(t, err)
 	assert.Equal(t, fiber.StatusConflict, resp.StatusCode)
-	
+
 	mockService.AssertExpectations(t)
 }
 
@@ -171,7 +171,7 @@ func TestHandleS3DeleteBucket(t *testing.T) {
 	// 断言
 	assert.NoError(t, err)
 	assert.Equal(t, fiber.StatusNoContent, resp.StatusCode)
-	
+
 	mockService.AssertExpectations(t)
 }
 
@@ -181,13 +181,13 @@ func TestHandleS3ListBucket(t *testing.T) {
 
 	// 设置模拟服务的预期行为
 	mockService.On("BucketExists", "testbucket").Return(true, nil)
-	
+
 	objects := []service.S3ObjectInfo{
 		{Key: "object1", LastModified: time.Now(), ETag: "\"etag1\"", Size: 100},
 		{Key: "object2", LastModified: time.Now(), ETag: "\"etag2\"", Size: 200},
 	}
 	commonPrefixes := []string{"prefix1/", "prefix2/"}
-	
+
 	mockService.On("ListObjects", "testbucket", "", "", "", 1000).Return(objects, commonPrefixes, nil)
 
 	// 创建请求
@@ -197,13 +197,13 @@ func TestHandleS3ListBucket(t *testing.T) {
 	// 断言
 	assert.NoError(t, err)
 	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
-	
+
 	// 验证响应内容
 	body, _ := io.ReadAll(resp.Body)
 	assert.Contains(t, string(body), "<Key>object1</Key>")
 	assert.Contains(t, string(body), "<Key>object2</Key>")
 	assert.Contains(t, string(body), "<Prefix>prefix1/</Prefix>")
-	
+
 	mockService.AssertExpectations(t)
 }
 
@@ -213,7 +213,7 @@ func TestHandleS3GetObject(t *testing.T) {
 
 	// 设置模拟服务的预期行为
 	mockService.On("BucketExists", "testbucket").Return(true, nil)
-	
+
 	objectData := service.S3ObjectData{
 		Key:          "testkey",
 		Data:         []byte("test content"),
@@ -222,7 +222,7 @@ func TestHandleS3GetObject(t *testing.T) {
 		ETag:         "\"etag123\"",
 		Metadata:     map[string]string{"custom": "value"},
 	}
-	
+
 	mockService.On("GetObject", "testbucket", "testkey").Return(objectData, nil)
 
 	// 创建请求
@@ -235,10 +235,10 @@ func TestHandleS3GetObject(t *testing.T) {
 	assert.Equal(t, "text/plain", resp.Header.Get("Content-Type"))
 	assert.Equal(t, "\"etag123\"", resp.Header.Get("ETag"))
 	assert.Equal(t, "value", resp.Header.Get("x-amz-meta-custom"))
-	
+
 	body, _ := io.ReadAll(resp.Body)
 	assert.Equal(t, "test content", string(body))
-	
+
 	mockService.AssertExpectations(t)
 }
 
@@ -255,13 +255,13 @@ func TestHandleS3PutObject(t *testing.T) {
 	req := httptest.NewRequest("PUT", "/s3/testbucket/testkey", bytes.NewReader(content))
 	req.Header.Set("Content-Type", "text/plain")
 	req.Header.Set("x-amz-meta-custom", "value")
-	
+
 	resp, err := app.Test(req)
 
 	// 断言
 	assert.NoError(t, err)
 	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
-	
+
 	mockService.AssertExpectations(t)
 }
 
@@ -280,7 +280,7 @@ func TestHandleS3DeleteObject(t *testing.T) {
 	// 断言
 	assert.NoError(t, err)
 	assert.Equal(t, fiber.StatusNoContent, resp.StatusCode)
-	
+
 	mockService.AssertExpectations(t)
 }
 
@@ -296,17 +296,17 @@ func TestHandleS3CreateMultipartUpload(t *testing.T) {
 	req := httptest.NewRequest("POST", "/s3/testbucket/testkey?uploads", nil)
 	req.Header.Set("Content-Type", "text/plain")
 	req.Header.Set("x-amz-meta-custom", "value")
-	
+
 	resp, err := app.Test(req)
 
 	// 断言
 	assert.NoError(t, err)
 	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
-	
+
 	// 验证响应内容
 	body, _ := io.ReadAll(resp.Body)
 	assert.Contains(t, string(body), "<UploadId>upload-id-123</UploadId>")
-	
+
 	mockService.AssertExpectations(t)
 }
 
@@ -326,7 +326,7 @@ func TestHandleS3UploadPart(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
 	assert.Equal(t, "\"etag-part1\"", resp.Header.Get("ETag"))
-	
+
 	mockService.AssertExpectations(t)
 }
 
@@ -350,18 +350,18 @@ func TestHandleS3CompleteMultipartUpload(t *testing.T) {
 		</Part>
 	</CompleteMultipartUpload>
 	`
-	
+
 	req := httptest.NewRequest("POST", "/s3/testbucket/testkey?uploadId=upload-id-123", strings.NewReader(xmlBody))
 	resp, err := app.Test(req)
 
 	// 断言
 	assert.NoError(t, err)
 	assert.Equal(t, fiber.StatusOK, resp.StatusCode)
-	
+
 	// 验证响应内容
 	body, _ := io.ReadAll(resp.Body)
 	assert.Contains(t, string(body), "<ETag>\"final-etag\"</ETag>")
-	
+
 	mockService.AssertExpectations(t)
 }
 
@@ -379,6 +379,6 @@ func TestHandleS3AbortMultipartUpload(t *testing.T) {
 	// 断言
 	assert.NoError(t, err)
 	assert.Equal(t, fiber.StatusNoContent, resp.StatusCode)
-	
+
 	mockService.AssertExpectations(t)
 }

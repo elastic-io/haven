@@ -2,15 +2,15 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/urfave/cli"
 	"golang.org/x/sys/unix"
 	"strconv"
 	"strings"
-	"github.com/urfave/cli"
 )
 
 var killCommand = cli.Command{
-	Name:  "kill",
-	Usage: "",
+	Name:      "kill",
+	Usage:     "",
 	ArgsUsage: ``,
 	Flags: []cli.Flag{
 		cli.BoolFlag{

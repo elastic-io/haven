@@ -8,8 +8,8 @@ import (
 const formatOptions = `table or json`
 
 var listCommand = cli.Command{
-	Name:  "list",
-	Usage: "lists instances",
+	Name:      "list",
+	Usage:     "lists instances",
 	ArgsUsage: ``,
 	Flags: []cli.Flag{
 		cli.StringFlag{
@@ -23,7 +23,7 @@ var listCommand = cli.Command{
 		},
 	},
 	Action: func(ctx *cli.Context) error {
-		fmt.Println(ctx.Args(),ctx.NArg(), ctx.Command.Names(), ctx.String("format"))
+		fmt.Println(ctx.Args(), ctx.NArg(), ctx.Command.Names(), ctx.String("format"))
 		return nil
 	},
 }

@@ -10,11 +10,11 @@ import (
 )
 
 type Options struct {
-	RepoId  string
-	DataDir string
-	Backend string
+	RepoId   string
+	DataDir  string
+	Backend  string
 	BodySize string
-	Config  *config.Config
+	Config   *config.Config
 }
 
 func New(ctx *cli.Context) *Options {

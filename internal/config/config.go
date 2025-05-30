@@ -9,22 +9,22 @@ import (
 )
 
 type Config struct {
-	Endpoint   string
-	EnableAuth bool
-	Username   string
-	Password   string
-	CertFile   string
-	KeyFile    string
-	BodyLimit  int
+	Endpoint     string
+	EnableAuth   bool
+	Username     string
+	Password     string
+	CertFile     string
+	KeyFile      string
+	BodyLimit    int
 	MaxMultipart string
 	PartSize     string
-	Modules    []string
+	Modules      []string
 
-	Storage    storage.Storage
+	Storage storage.Storage
 }
 
 func New(ctx *cli.Context) *Config {
-	c := &Config{BodyLimit: 256*types.MB}
+	c := &Config{BodyLimit: 256 * types.MB}
 	c.Endpoint = ctx.String("endpoint")
 	c.EnableAuth = ctx.Bool("auth")
 	c.Username = ctx.String("username")
@@ -51,7 +51,7 @@ func (c *Config) Validate() error {
 		return fmt.Errorf("part-size is required")
 	}
 	if c.Storage == nil {
-		return  fmt.Errorf("storage is required")
+		return fmt.Errorf("storage is required")
 	}
 	return nil
 }

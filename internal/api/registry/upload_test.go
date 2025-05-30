@@ -187,7 +187,7 @@ func TestGlobalUploadDataStorage(t *testing.T) {
 
 	// 测试移除上传数据
 	removeUploadData(repository, uuid)
-	
+
 	// 验证数据已被移除
 	removedData := getUploadData(repository, uuid)
 	if removedData != nil {
@@ -206,9 +206,9 @@ func TestConcurrentAccess(t *testing.T) {
 	// 创建多个goroutine同时访问
 	const goroutines = 10
 	const iterations = 100
-	
+
 	done := make(chan bool, goroutines)
-	
+
 	for i := 0; i < goroutines; i++ {
 		go func(id int) {
 			for j := 0; j < iterations; j++ {
@@ -217,10 +217,10 @@ func TestConcurrentAccess(t *testing.T) {
 				if err := data.AppendData(testData); err != nil {
 					t.Errorf("Goroutine %d failed to append data: %v", id, err)
 				}
-				
+
 				// 获取大小
 				_ = data.Size()
-				
+
 				// 获取数据
 				_, err := data.GetData()
 				if err != nil {
@@ -230,7 +230,7 @@ func TestConcurrentAccess(t *testing.T) {
 			done <- true
 		}(i)
 	}
-	
+
 	// 等待所有goroutine完成
 	for i := 0; i < goroutines; i++ {
 		<-done

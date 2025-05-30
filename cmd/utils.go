@@ -1,9 +1,9 @@
 package cmd
 
 import (
-	"os"
-	"github.com/urfave/cli"
 	"fmt"
+	"github.com/urfave/cli"
+	"os"
 )
 
 const (

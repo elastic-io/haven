@@ -10,7 +10,7 @@ import (
 func TestNew(t *testing.T) {
 	// 创建一个新的 CLI 应用
 	app := cli.NewApp()
-	
+
 	// 定义全局标志
 	app.Flags = []cli.Flag{
 		cli.StringFlag{Name: "endpoint", Value: ""},
@@ -20,7 +20,7 @@ func TestNew(t *testing.T) {
 		cli.StringFlag{Name: "key", Value: ""},
 		cli.StringSliceFlag{Name: "mod", Value: &cli.StringSlice{}},
 	}
-	
+
 	// 模拟命令行参数
 	args := []string{
 		"app",
@@ -32,20 +32,20 @@ func TestNew(t *testing.T) {
 		"--mod=module1",
 		"--mod=module2",
 	}
-	
+
 	// 运行应用以获取上下文
 	var capturedContext *cli.Context
 	app.Action = func(c *cli.Context) error {
 		capturedContext = c
 		return nil
 	}
-	
+
 	err := app.Run(args)
 	assert.NoError(t, err)
-	
+
 	// 使用捕获的上下文测试 New 函数
 	config := New(capturedContext)
-	
+
 	// 验证配置值
 	assert.Equal(t, "http://localhost:8080", config.Endpoint)
 	assert.True(t, config.EnableAuth)
@@ -92,7 +92,7 @@ func TestValidate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.config.Validate()
-			
+
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Equal(t, tt.errorMsg, err.Error())

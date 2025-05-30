@@ -159,14 +159,14 @@ func TestBoltS3Storage(t *testing.T) {
 
 		// 验证数据
 		if !bytes.Equal(largeData, retrievedData) {
-			t.Fatalf("Retrieved large data doesn't match original: lengths expected %d, got %d", 
-                len(largeData), len(retrievedData))
+			t.Fatalf("Retrieved large data doesn't match original: lengths expected %d, got %d",
+				len(largeData), len(retrievedData))
 		}
 
 		// 验证元数据
 		if retrievedMetadata["content-type"] != metadata["content-type"] {
-			t.Fatalf("Retrieved metadata doesn't match original: expected %v, got %v", 
-                metadata, retrievedMetadata)
+			t.Fatalf("Retrieved metadata doesn't match original: expected %v, got %v",
+				metadata, retrievedMetadata)
 		}
 
 		// 删除大文件
@@ -213,8 +213,8 @@ func TestBoltS3Storage(t *testing.T) {
 				t.Fatalf("Failed to list objects with prefix %s: %v", test.prefix, err)
 			}
 			if len(keys) != test.expected {
-				t.Fatalf("Expected %d objects with prefix %s, got %d: %v", 
-                    test.expected, test.prefix, len(keys), keys)
+				t.Fatalf("Expected %d objects with prefix %s, got %d: %v",
+					test.expected, test.prefix, len(keys), keys)
 			}
 		}
 	})

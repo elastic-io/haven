@@ -80,30 +80,30 @@ func (api *S3API) RegisterRoutes(app *fiber.App) {
 	s3.Delete("/:bucket/:key", api.handleS3DeleteObject)
 
 	// 分段上传操作 - 使用查询参数
-    // 分段上传操作 - 使用查询参数
-    s3.Post("/:bucket/:key", func(c *fiber.Ctx) error {
-    if c.Query("uploads") != "" {
-        return api.handleS3CreateMultipartUpload(c)
-    }
-    if c.Query("uploadId") != "" && c.Query("uploads") == "" {
-        return api.handleS3CompleteMultipartUpload(c)
-    }
-    return c.Next()
-    })
+	// 分段上传操作 - 使用查询参数
+	s3.Post("/:bucket/:key", func(c *fiber.Ctx) error {
+		if c.Query("uploads") != "" {
+			return api.handleS3CreateMultipartUpload(c)
+		}
+		if c.Query("uploadId") != "" && c.Query("uploads") == "" {
+			return api.handleS3CompleteMultipartUpload(c)
+		}
+		return c.Next()
+	})
 
-    s3.Put("/:bucket/:key", func(c *fiber.Ctx) error {
-    if c.Query("partNumber") != "" && c.Query("uploadId") != "" {
-        return api.handleS3UploadPart(c)
-    }
-    return api.handleS3PutObject(c)
-    })
+	s3.Put("/:bucket/:key", func(c *fiber.Ctx) error {
+		if c.Query("partNumber") != "" && c.Query("uploadId") != "" {
+			return api.handleS3UploadPart(c)
+		}
+		return api.handleS3PutObject(c)
+	})
 
-    s3.Delete("/:bucket/:key", func(c *fiber.Ctx) error {
-    if c.Query("uploadId") != "" {
-        return api.handleS3AbortMultipartUpload(c)
-    }
-    return api.handleS3DeleteObject(c)
-    })
+	s3.Delete("/:bucket/:key", func(c *fiber.Ctx) error {
+		if c.Query("uploadId") != "" {
+			return api.handleS3AbortMultipartUpload(c)
+		}
+		return api.handleS3DeleteObject(c)
+	})
 }
 
 // 处理 S3 API 基础路由
@@ -456,7 +456,7 @@ func (api *S3API) handleS3UploadPart(c *fiber.Ctx) error {
 	key := c.Params("key")
 	uploadID := c.Query("uploadId")
 	partNumberStr := c.Query("partNumber")
-	
+
 	partNumber, err := strconv.Atoi(partNumberStr)
 	if err != nil {
 		return c.Status(fiber.StatusBadRequest).SendString("Invalid part number")

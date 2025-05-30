@@ -39,22 +39,22 @@ func DefaultLogConfig() LogConfig {
 func InitLogger(config LogConfig) {
 	var writeSyncers []zapcore.WriteSyncer
 
-    // 处理文件输出
-    if config.Filename == "" {
-        // 如果文件名为空，使用/dev/stderr
-        stderrSyncer := zapcore.AddSync(os.Stderr)
-        writeSyncers = append(writeSyncers, stderrSyncer)
-    } else {
-        // 否则使用指定的文件
-        fileWriter := getLogWriter(config)
-        writeSyncers = append(writeSyncers, fileWriter)
-        
-        // 只有当输出到实际文件时，才考虑额外的控制台输出
-        if config.Console {
-            consoleSyncer := zapcore.AddSync(os.Stdout)
-            writeSyncers = append(writeSyncers, consoleSyncer)
-        }
-    }
+	// 处理文件输出
+	if config.Filename == "" {
+		// 如果文件名为空，使用/dev/stderr
+		stderrSyncer := zapcore.AddSync(os.Stderr)
+		writeSyncers = append(writeSyncers, stderrSyncer)
+	} else {
+		// 否则使用指定的文件
+		fileWriter := getLogWriter(config)
+		writeSyncers = append(writeSyncers, fileWriter)
+
+		// 只有当输出到实际文件时，才考虑额外的控制台输出
+		if config.Console {
+			consoleSyncer := zapcore.AddSync(os.Stdout)
+			writeSyncers = append(writeSyncers, consoleSyncer)
+		}
+	}
 
 	// 合并所有输出
 	multiWriteSyncer := zapcore.NewMultiWriteSyncer(writeSyncers...)

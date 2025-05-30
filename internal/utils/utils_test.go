@@ -39,15 +39,15 @@ func TestGenerateUploadID(t *testing.T) {
 func TestRandomString(t *testing.T) {
 	// 测试不同长度的随机字符串
 	lengths := []int{5, 10, 16, 20}
-	
+
 	for _, length := range lengths {
 		str := randomString(length)
-		
+
 		// 验证长度是否符合预期
 		if len(str) != length {
 			t.Errorf("随机字符串长度应为 %d，实际为: %d", length, len(str))
 		}
-		
+
 		// 验证字符是否都在允许的字符集中
 		const validChars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 		for _, char := range str {
@@ -56,7 +56,7 @@ func TestRandomString(t *testing.T) {
 			}
 		}
 	}
-	
+
 	// 验证两次生成的随机字符串不同
 	str1 := randomString(16)
 	str2 := randomString(16)
@@ -69,17 +69,17 @@ func TestRandomString(t *testing.T) {
 func TestGenerateUploadUUID(t *testing.T) {
 	uuid1 := GenerateUploadUUID()
 	uuid2 := GenerateUploadUUID()
-	
+
 	// 验证生成的UUID不为空
 	if uuid1 == "" || uuid2 == "" {
 		t.Error("生成的上传UUID不应为空")
 	}
-	
+
 	// 验证两次生成的UUID不同
 	if uuid1 == uuid2 {
 		t.Error("两次生成的上传UUID不应相同")
 	}
-	
+
 	// 验证UUID格式是否符合预期（upload-数字）
 	if !strings.HasPrefix(uuid1, "upload-") {
 		t.Errorf("上传UUID应以'upload-'开头，实际为: %s", uuid1)
@@ -97,7 +97,7 @@ func TestComputeMD5(t *testing.T) {
 		{[]byte(""), "d41d8cd98f00b204e9800998ecf8427e"}, // 空字符串的MD5
 		{[]byte("测试中文"), "20bb5331c52a81f440b2b0b9882f9c42"},
 	}
-	
+
 	for _, tc := range testCases {
 		result := ComputeMD5(tc.input)
 		if result != tc.expected {
@@ -117,24 +117,24 @@ func TestComputeSHA256(t *testing.T) {
 		{[]byte(""), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}, // 空字符串的SHA256
 		{[]byte("测试中文"), "72726d8818f693066ceb69afa364218b692e62ea92b385782363780f47529c21"},
 	}
-	
+
 	for _, tc := range testCases {
 		result := ComputeSHA256(tc.input)
-		
+
 		// 由于ComputeSHA256使用fmt.Sprintf("%x", hash)，我们需要确保比较的格式一致
 		// 将预期结果转换为相同的格式进行比较
 		hash := result
 		expectedHash := tc.expected
-		
+
 		if hash != expectedHash {
 			t.Errorf("ComputeSHA256(%s) = %s; 期望: %s", tc.input, hash, expectedHash)
 		}
-		
+
 		// 验证结果是否为有效的SHA256哈希（64个十六进制字符）
 		if len(hash) != 64 {
 			t.Errorf("SHA256哈希长度应为64个字符，实际为: %d", len(hash))
 		}
-		
+
 		// 验证结果是否为有效的十六进制字符串
 		_, err := hex.DecodeString(hash)
 		if err != nil {
@@ -147,13 +147,13 @@ func TestComputeSHA256(t *testing.T) {
 func TestComputeMD5_Binary(t *testing.T) {
 	// 创建一个包含一些二进制数据的切片
 	binaryData := []byte{0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE, 0xFD, 0xFC}
-	
+
 	// 计算MD5
 	result := ComputeMD5(binaryData)
-	
+
 	// 手动计算预期结果进行比较
 	expected := "c6c70c9d9aac432b9f22d34d69d8e5c1"
-	
+
 	if result != expected {
 		t.Errorf("二进制数据的MD5计算错误，得到: %s, 期望: %s", result, expected)
 	}
@@ -163,13 +163,13 @@ func TestComputeMD5_Binary(t *testing.T) {
 func TestComputeSHA256_Binary(t *testing.T) {
 	// 创建一个包含一些二进制数据的切片
 	binaryData := []byte{0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE, 0xFD, 0xFC}
-	
+
 	// 计算SHA256
 	result := ComputeSHA256(binaryData)
-	
+
 	// 手动计算预期结果进行比较
 	expected := "1d5e11a6d1a69cce8f9f34e61d215f06a7a6f4b6ff584aa0d2a31144a0845b68"
-	
+
 	if result != expected {
 		t.Errorf("二进制数据的SHA256计算错误，得到: %s, 期望: %s", result, expected)
 	}
@@ -181,7 +181,7 @@ func TestRandomString_Uniqueness(t *testing.T) {
 	count := 100
 	length := 16
 	strings := make(map[string]bool)
-	
+
 	for i := 0; i < count; i++ {
 		str := randomString(length)
 		if strings[str] {
@@ -196,13 +196,13 @@ func TestGenerateUploadID_Format(t *testing.T) {
 	for i := 0; i < 10; i++ {
 		id := GenerateUploadID()
 		parts := strings.Split(id, "-")
-		
+
 		// 验证格式
 		if len(parts) != 2 {
 			t.Errorf("上传ID格式不正确: %s", id)
 			continue
 		}
-		
+
 		// 验证时间戳部分是否为数字
 		timestamp := parts[0]
 		for _, char := range timestamp {
@@ -211,7 +211,7 @@ func TestGenerateUploadID_Format(t *testing.T) {
 				break
 			}
 		}
-		
+
 		// 验证随机字符串部分长度
 		randomPart := parts[1]
 		if len(randomPart) != 16 {

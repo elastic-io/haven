@@ -1,8 +1,8 @@
 package service
 
 import (
-	"github.com/elastic-io/haven/internal/types"
 	"github.com/elastic-io/haven/internal/storage"
+	"github.com/elastic-io/haven/internal/types"
 )
 
 type S3Service interface {
