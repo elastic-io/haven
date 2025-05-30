@@ -17,7 +17,7 @@ var (
 	_ easyjson.Marshaler
 )
 
-func easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes(in *jlexer.Lexer, out *S3ObjectInfo) {
+func easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes(in *jlexer.Lexer, out *S3ObjectInfo) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -56,7 +56,7 @@ func easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes(in *jlexer.Lexer
 		in.Consumed()
 	}
 }
-func easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes(out *jwriter.Writer, in S3ObjectInfo) {
+func easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes(out *jwriter.Writer, in S3ObjectInfo) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -86,27 +86,27 @@ func easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes(out *jwriter.Wri
 // MarshalJSON supports json.Marshaler interface
 func (v S3ObjectInfo) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes(&w, v)
+	easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v S3ObjectInfo) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes(w, v)
+	easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *S3ObjectInfo) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes(&r, v)
+	easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *S3ObjectInfo) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes(l, v)
+	easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes(l, v)
 }
-func easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes1(in *jlexer.Lexer, out *S3ObjectData) {
+func easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes1(in *jlexer.Lexer, out *S3ObjectData) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -170,7 +170,7 @@ func easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes1(in *jlexer.Lexe
 		in.Consumed()
 	}
 }
-func easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes1(out *jwriter.Writer, in S3ObjectData) {
+func easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes1(out *jwriter.Writer, in S3ObjectData) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -231,27 +231,27 @@ func easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes1(out *jwriter.Wr
 // MarshalJSON supports json.Marshaler interface
 func (v S3ObjectData) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes1(&w, v)
+	easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes1(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v S3ObjectData) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes1(w, v)
+	easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes1(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *S3ObjectData) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes1(&r, v)
+	easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes1(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *S3ObjectData) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes1(l, v)
+	easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes1(l, v)
 }
-func easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes2(in *jlexer.Lexer, out *PartInfo) {
+func easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes2(in *jlexer.Lexer, out *PartInfo) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -286,7 +286,7 @@ func easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes2(in *jlexer.Lexe
 		in.Consumed()
 	}
 }
-func easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes2(out *jwriter.Writer, in PartInfo) {
+func easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes2(out *jwriter.Writer, in PartInfo) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -311,27 +311,27 @@ func easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes2(out *jwriter.Wr
 // MarshalJSON supports json.Marshaler interface
 func (v PartInfo) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes2(&w, v)
+	easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes2(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v PartInfo) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes2(w, v)
+	easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes2(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *PartInfo) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes2(&r, v)
+	easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes2(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *PartInfo) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes2(l, v)
+	easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes2(l, v)
 }
-func easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes3(in *jlexer.Lexer, out *MultipartUploadInfo) {
+func easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes3(in *jlexer.Lexer, out *MultipartUploadInfo) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -388,7 +388,7 @@ func easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes3(in *jlexer.Lexe
 		in.Consumed()
 	}
 }
-func easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes3(out *jwriter.Writer, in MultipartUploadInfo) {
+func easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes3(out *jwriter.Writer, in MultipartUploadInfo) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -444,27 +444,27 @@ func easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes3(out *jwriter.Wr
 // MarshalJSON supports json.Marshaler interface
 func (v MultipartUploadInfo) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes3(&w, v)
+	easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes3(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v MultipartUploadInfo) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes3(w, v)
+	easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes3(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *MultipartUploadInfo) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes3(&r, v)
+	easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes3(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *MultipartUploadInfo) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes3(l, v)
+	easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes3(l, v)
 }
-func easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes4(in *jlexer.Lexer, out *MultipartPart) {
+func easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes4(in *jlexer.Lexer, out *MultipartPart) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -497,7 +497,7 @@ func easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes4(in *jlexer.Lexe
 		in.Consumed()
 	}
 }
-func easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes4(out *jwriter.Writer, in MultipartPart) {
+func easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes4(out *jwriter.Writer, in MultipartPart) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -517,27 +517,27 @@ func easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes4(out *jwriter.Wr
 // MarshalJSON supports json.Marshaler interface
 func (v MultipartPart) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes4(&w, v)
+	easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes4(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v MultipartPart) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes4(w, v)
+	easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes4(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *MultipartPart) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes4(&r, v)
+	easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes4(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *MultipartPart) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes4(l, v)
+	easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes4(l, v)
 }
-func easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes5(in *jlexer.Lexer, out *BucketInfo) {
+func easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes5(in *jlexer.Lexer, out *BucketInfo) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -572,7 +572,7 @@ func easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes5(in *jlexer.Lexe
 		in.Consumed()
 	}
 }
-func easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes5(out *jwriter.Writer, in BucketInfo) {
+func easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes5(out *jwriter.Writer, in BucketInfo) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -592,23 +592,23 @@ func easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes5(out *jwriter.Wr
 // MarshalJSON supports json.Marshaler interface
 func (v BucketInfo) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes5(&w, v)
+	easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes5(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v BucketInfo) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson6601e8cdEncodeGithubComElasticIoHavenInternalTypes5(w, v)
+	easyjson55999d76EncodeGithubComElasticIoHavenInternalTypes5(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *BucketInfo) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes5(&r, v)
+	easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes5(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *BucketInfo) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson6601e8cdDecodeGithubComElasticIoHavenInternalTypes5(l, v)
+	easyjson55999d76DecodeGithubComElasticIoHavenInternalTypes5(l, v)
 }

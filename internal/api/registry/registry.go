@@ -324,8 +324,8 @@ func (r *RegistryAPI) handlePullManifest(c *fiber.Ctx) error {
 	c.Set("Docker-Content-Digest", digest)
 	c.Set("Content-Length", fmt.Sprintf("%d", len(manifest)))
 
-	log.Logger.Info("Serving manifest ", repository, ":", reference, "size: ", len(manifest),
-		"bytes, digest: ", digest, " content-type: ", contentType)
+	log.Logger.Info("Serving manifest ", repository, ":", reference, ", size: ", len(manifest),
+		"bytes, digest: ", digest, ", content-type: ", contentType)
 
 	// 如果是HEAD请求，不返回实际内容
 	if c.Method() == "HEAD" {

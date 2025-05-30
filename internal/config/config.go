@@ -17,7 +17,7 @@ type Config struct {
 	KeyFile      string
 	BodyLimit    int
 	MaxMultipart string
-	PartSize     string
+	ChunkLength  string
 	Modules      []string
 
 	Storage storage.Storage
@@ -32,7 +32,7 @@ func New(ctx *cli.Context) *Config {
 	c.CertFile = ctx.String("cert")
 	c.KeyFile = ctx.String("key")
 	c.MaxMultipart = ctx.String("max-multipart")
-	c.PartSize = ctx.String("part-size")
+	c.ChunkLength = ctx.String("chunk-length")
 	c.Modules = ctx.GlobalStringSlice("mod")
 	return c
 }
@@ -46,9 +46,6 @@ func (c *Config) Validate() error {
 	}
 	if c.MaxMultipart == "" {
 		return fmt.Errorf("max-multipart is required")
-	}
-	if c.PartSize == "" {
-		return fmt.Errorf("part-size is required")
 	}
 	if c.Storage == nil {
 		return fmt.Errorf("storage is required")

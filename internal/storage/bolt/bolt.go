@@ -35,15 +35,15 @@ const (
 	cleanupInterval      = 1 * time.Hour      // 清理过期上传的间隔
 )
 
-// BoltS3types 实现了S3types接口，使用BoltDB作为后端
-type BoltS3types struct {
+// BoltS3Storage 实现了S3types接口，使用BoltDB作为后端
+type BoltS3Storage struct {
 	db            *bbolt.DB
 	cleanupTicker *time.Ticker
 	cleanupDone   chan struct{}
 	mu            sync.RWMutex // 保护并发访问
 }
 
-// NewBoltS3types 创建一个新的BoltDB存储实例
+// NewBoltS3Storage 创建一个新的BoltDB存储实例
 func NewBoltS3Storage(path string) (storage.Storage, error) {
 	db, err := bbolt.Open(path, 0600, &bbolt.Options{
 		Timeout: 1 * time.Second,
@@ -72,7 +72,7 @@ func NewBoltS3Storage(path string) (storage.Storage, error) {
 		return nil, fmt.Errorf("failed to initialize buckets: %w", err)
 	}
 
-	s := &BoltS3types{
+	s := &BoltS3Storage{
 		db:          db,
 		cleanupDone: make(chan struct{}),
 	}
@@ -84,7 +84,7 @@ func NewBoltS3Storage(path string) (storage.Storage, error) {
 }
 
 // Close 关闭数据库连接和清理例程
-func (s *BoltS3types) Close() error {
+func (s *BoltS3Storage) Close() error {
 	// 停止清理例程
 	if s.cleanupTicker != nil {
 		s.cleanupTicker.Stop()
@@ -96,7 +96,7 @@ func (s *BoltS3types) Close() error {
 }
 
 // startCleanupRoutine 启动后台例程，定期清理过期的分段上传
-func (s *BoltS3types) startCleanupRoutine() {
+func (s *BoltS3Storage) startCleanupRoutine() {
 	s.cleanupTicker = time.NewTicker(cleanupInterval)
 
 	go func() {
@@ -114,7 +114,7 @@ func (s *BoltS3types) startCleanupRoutine() {
 }
 
 // cleanupExpiredUploads 清理过期的分段上传
-func (s *BoltS3types) cleanupExpiredUploads() error {
+func (s *BoltS3Storage) cleanupExpiredUploads() error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -187,7 +187,7 @@ func (s *BoltS3types) cleanupExpiredUploads() error {
 }
 
 // CreateMultipartUpload 初始化分段上传
-func (s *BoltS3types) CreateMultipartUpload(bucket, key, contentType string, metadata map[string]string) (string, error) {
+func (s *BoltS3Storage) CreateMultipartUpload(bucket, key, contentType string, metadata map[string]string) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -249,7 +249,7 @@ func (s *BoltS3types) CreateMultipartUpload(bucket, key, contentType string, met
 }
 
 // UploadPart 上传一个分段
-func (s *BoltS3types) UploadPart(bucket, key, uploadID string, partNumber int, data []byte) (string, error) {
+func (s *BoltS3Storage) UploadPart(bucket, key, uploadID string, partNumber int, data []byte) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -332,7 +332,7 @@ func (s *BoltS3types) UploadPart(bucket, key, uploadID string, partNumber int, d
 }
 
 // CompleteMultipartUpload 完成分段上传
-func (s *BoltS3types) CompleteMultipartUpload(bucket, key, uploadID string, parts []types.MultipartPart) (string, error) {
+func (s *BoltS3Storage) CompleteMultipartUpload(bucket, key, uploadID string, parts []types.MultipartPart) (string, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -481,7 +481,7 @@ func (s *BoltS3types) CompleteMultipartUpload(bucket, key, uploadID string, part
 }
 
 // AbortMultipartUpload 中止分段上传
-func (s *BoltS3types) AbortMultipartUpload(bucket, key, uploadID string) error {
+func (s *BoltS3Storage) AbortMultipartUpload(bucket, key, uploadID string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -526,7 +526,7 @@ func (s *BoltS3types) AbortMultipartUpload(bucket, key, uploadID string) error {
 }
 
 // ListMultipartUploads 列出所有进行中的分段上传
-func (s *BoltS3types) ListMultipartUploads(bucket string) ([]types.MultipartUploadInfo, error) {
+func (s *BoltS3Storage) ListMultipartUploads(bucket string) ([]types.MultipartUploadInfo, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -574,7 +574,7 @@ func (s *BoltS3types) ListMultipartUploads(bucket string) ([]types.MultipartUplo
 }
 
 // ListParts 列出分段上传的所有部分
-func (s *BoltS3types) ListParts(bucket, key, uploadID string) ([]types.PartInfo, error) {
+func (s *BoltS3Storage) ListParts(bucket, key, uploadID string) ([]types.PartInfo, error) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
@@ -654,7 +654,7 @@ func (s *BoltS3types) ListParts(bucket, key, uploadID string) ([]types.PartInfo,
 // 内部辅助方法
 
 // bucketExistsInternal 检查桶是否存在（内部使用，不加锁）
-func (s *BoltS3types) bucketExistsInternal(bucket string) (bool, error) {
+func (s *BoltS3Storage) bucketExistsInternal(bucket string) (bool, error) {
 	var exists bool
 
 	err := s.db.View(func(tx *bbolt.Tx) error {
@@ -671,7 +671,7 @@ func (s *BoltS3types) bucketExistsInternal(bucket string) (bool, error) {
 	return exists, err
 }
 
-func (s *BoltS3types) ListBuckets() ([]types.BucketInfo, error) {
+func (s *BoltS3Storage) ListBuckets() ([]types.BucketInfo, error) {
 	var buckets []types.BucketInfo
 
 	err := s.db.View(func(tx *bbolt.Tx) error {
@@ -692,7 +692,7 @@ func (s *BoltS3types) ListBuckets() ([]types.BucketInfo, error) {
 }
 
 // CreateBucket 创建一个新的存储桶
-func (s *BoltS3types) CreateBucket(bucket string) error {
+func (s *BoltS3Storage) CreateBucket(bucket string) error {
 	return s.db.Update(func(tx *bbolt.Tx) error {
 		b := tx.Bucket([]byte(bucketsBucket))
 
@@ -716,7 +716,7 @@ func (s *BoltS3types) CreateBucket(bucket string) error {
 }
 
 // DeleteBucket 删除一个存储桶
-func (s *BoltS3types) DeleteBucket(bucket string) error {
+func (s *BoltS3Storage) DeleteBucket(bucket string) error {
 	return s.db.Update(func(tx *bbolt.Tx) error {
 		bucketsBucket := tx.Bucket([]byte(bucketsBucket))
 
@@ -740,7 +740,7 @@ func (s *BoltS3types) DeleteBucket(bucket string) error {
 }
 
 // BucketExists 检查存储桶是否存在
-func (s *BoltS3types) BucketExists(bucket string) (bool, error) {
+func (s *BoltS3Storage) BucketExists(bucket string) (bool, error) {
 	var exists bool
 
 	err := s.db.View(func(tx *bbolt.Tx) error {
@@ -753,7 +753,7 @@ func (s *BoltS3types) BucketExists(bucket string) (bool, error) {
 }
 
 // ListObjects 列出存储桶中的对象
-func (s *BoltS3types) ListObjects(bucket, prefix, marker, delimiter string, maxKeys int) ([]types.S3ObjectInfo, []string, error) {
+func (s *BoltS3Storage) ListObjects(bucket, prefix, marker, delimiter string, maxKeys int) ([]types.S3ObjectInfo, []string, error) {
 	var objects []types.S3ObjectInfo
 	var commonPrefixes []string
 
@@ -815,7 +815,7 @@ func (s *BoltS3types) ListObjects(bucket, prefix, marker, delimiter string, maxK
 			})
 
 			if len(objects) >= maxKeys {
-				return nil
+				return fmt.Errorf("max keys reached: %d", maxKeys)
 			}
 		}
 
@@ -826,7 +826,7 @@ func (s *BoltS3types) ListObjects(bucket, prefix, marker, delimiter string, maxK
 }
 
 // GetObject 获取一个对象
-func (s *BoltS3types) GetObject(bucket, key string) (*types.S3ObjectData, error) {
+func (s *BoltS3Storage) GetObject(bucket, key string) (*types.S3ObjectData, error) {
 	objectData := &types.S3ObjectData{}
 
 	err := s.db.View(func(tx *bbolt.Tx) error {
@@ -836,6 +836,7 @@ func (s *BoltS3types) GetObject(bucket, key string) (*types.S3ObjectData, error)
 		fullKey := bucket + ":" + key
 
 		// 获取对象数据
+		log.Logger.Info("geting object, fullKey: ", fullKey)
 		data := b.Get([]byte(fullKey))
 		if data == nil {
 			return fmt.Errorf("object not found")
@@ -852,7 +853,7 @@ func (s *BoltS3types) GetObject(bucket, key string) (*types.S3ObjectData, error)
 }
 
 // PutObject 存储一个对象
-func (s *BoltS3types) PutObject(bucket string, object *types.S3ObjectData) error {
+func (s *BoltS3Storage) PutObject(bucket string, object *types.S3ObjectData) error {
 	return s.db.Update(func(tx *bbolt.Tx) error {
 		b := tx.Bucket([]byte(objectsBucket))
 
@@ -870,7 +871,7 @@ func (s *BoltS3types) PutObject(bucket string, object *types.S3ObjectData) error
 }
 
 // DeleteObject 删除一个对象
-func (s *BoltS3types) DeleteObject(bucket, key string) error {
+func (s *BoltS3Storage) DeleteObject(bucket, key string) error {
 	return s.db.Update(func(tx *bbolt.Tx) error {
 		b := tx.Bucket([]byte(objectsBucket))
 
@@ -878,6 +879,7 @@ func (s *BoltS3types) DeleteObject(bucket, key string) error {
 		fullKey := bucket + ":" + key
 
 		// 检查对象是否存在
+		log.Logger.Info("deleting object, fullKey: ", fullKey)
 		if b.Get([]byte(fullKey)) == nil {
 			return fmt.Errorf("object not found")
 		}
