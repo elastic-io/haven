@@ -97,119 +97,7 @@ func (v *MultiManifest) UnmarshalJSON(data []byte) error {
 func (v *MultiManifest) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes(l, v)
 }
-func easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes1(in *jlexer.Lexer, out *ManifestV2) {
-	isTopLevel := in.IsStart()
-	if in.IsNull() {
-		if isTopLevel {
-			in.Consumed()
-		}
-		in.Skip()
-		return
-	}
-	in.Delim('{')
-	for !in.IsDelim('}') {
-		key := in.UnsafeFieldName(false)
-		in.WantColon()
-		if in.IsNull() {
-			in.Skip()
-			in.WantComma()
-			continue
-		}
-		switch key {
-		case "SchemaVersion":
-			out.SchemaVersion = int(in.Int())
-		case "Config":
-			easyjson4ef6ea8bDecode(in, &out.Config)
-		case "Layers":
-			if in.IsNull() {
-				in.Skip()
-				out.Layers = nil
-			} else {
-				in.Delim('[')
-				if out.Layers == nil {
-					if !in.IsDelim(']') {
-						out.Layers = make([]struct{ Digest string }, 0, 4)
-					} else {
-						out.Layers = []struct{ Digest string }{}
-					}
-				} else {
-					out.Layers = (out.Layers)[:0]
-				}
-				for !in.IsDelim(']') {
-					var v1 struct{ Digest string }
-					easyjson4ef6ea8bDecode(in, &v1)
-					out.Layers = append(out.Layers, v1)
-					in.WantComma()
-				}
-				in.Delim(']')
-			}
-		default:
-			in.SkipRecursive()
-		}
-		in.WantComma()
-	}
-	in.Delim('}')
-	if isTopLevel {
-		in.Consumed()
-	}
-}
-func easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes1(out *jwriter.Writer, in ManifestV2) {
-	out.RawByte('{')
-	first := true
-	_ = first
-	{
-		const prefix string = ",\"SchemaVersion\":"
-		out.RawString(prefix[1:])
-		out.Int(int(in.SchemaVersion))
-	}
-	{
-		const prefix string = ",\"Config\":"
-		out.RawString(prefix)
-		easyjson4ef6ea8bEncode(out, in.Config)
-	}
-	{
-		const prefix string = ",\"Layers\":"
-		out.RawString(prefix)
-		if in.Layers == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
-			out.RawString("null")
-		} else {
-			out.RawByte('[')
-			for v2, v3 := range in.Layers {
-				if v2 > 0 {
-					out.RawByte(',')
-				}
-				easyjson4ef6ea8bEncode(out, v3)
-			}
-			out.RawByte(']')
-		}
-	}
-	out.RawByte('}')
-}
-
-// MarshalJSON supports json.Marshaler interface
-func (v ManifestV2) MarshalJSON() ([]byte, error) {
-	w := jwriter.Writer{}
-	easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes1(&w, v)
-	return w.Buffer.BuildBytes(), w.Error
-}
-
-// MarshalEasyJSON supports easyjson.Marshaler interface
-func (v ManifestV2) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes1(w, v)
-}
-
-// UnmarshalJSON supports json.Unmarshaler interface
-func (v *ManifestV2) UnmarshalJSON(data []byte) error {
-	r := jlexer.Lexer{Data: data}
-	easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes1(&r, v)
-	return r.Error()
-}
-
-// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
-func (v *ManifestV2) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes1(l, v)
-}
-func easyjson4ef6ea8bDecode(in *jlexer.Lexer, out *struct{ Digest string }) {
+func easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes1(in *jlexer.Lexer, out *ManifestV2Config) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -240,7 +128,7 @@ func easyjson4ef6ea8bDecode(in *jlexer.Lexer, out *struct{ Digest string }) {
 		in.Consumed()
 	}
 }
-func easyjson4ef6ea8bEncode(out *jwriter.Writer, in struct{ Digest string }) {
+func easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes1(out *jwriter.Writer, in ManifestV2Config) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -251,7 +139,31 @@ func easyjson4ef6ea8bEncode(out *jwriter.Writer, in struct{ Digest string }) {
 	}
 	out.RawByte('}')
 }
-func easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes2(in *jlexer.Lexer, out *ManifestV1) {
+
+// MarshalJSON supports json.Marshaler interface
+func (v ManifestV2Config) MarshalJSON() ([]byte, error) {
+	w := jwriter.Writer{}
+	easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes1(&w, v)
+	return w.Buffer.BuildBytes(), w.Error
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v ManifestV2Config) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes1(w, v)
+}
+
+// UnmarshalJSON supports json.Unmarshaler interface
+func (v *ManifestV2Config) UnmarshalJSON(data []byte) error {
+	r := jlexer.Lexer{Data: data}
+	easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes1(&r, v)
+	return r.Error()
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *ManifestV2Config) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes1(l, v)
+}
+func easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes2(in *jlexer.Lexer, out *ManifestV2) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -272,25 +184,27 @@ func easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes2(in *jlexer.Lexe
 		switch key {
 		case "SchemaVersion":
 			out.SchemaVersion = int(in.Int())
-		case "FSLayers":
+		case "Config":
+			(out.Config).UnmarshalEasyJSON(in)
+		case "Layers":
 			if in.IsNull() {
 				in.Skip()
-				out.FSLayers = nil
+				out.Layers = nil
 			} else {
 				in.Delim('[')
-				if out.FSLayers == nil {
+				if out.Layers == nil {
 					if !in.IsDelim(']') {
-						out.FSLayers = make([]struct{ BlobSum string }, 0, 4)
+						out.Layers = make([]ManifestV2Config, 0, 4)
 					} else {
-						out.FSLayers = []struct{ BlobSum string }{}
+						out.Layers = []ManifestV2Config{}
 					}
 				} else {
-					out.FSLayers = (out.FSLayers)[:0]
+					out.Layers = (out.Layers)[:0]
 				}
 				for !in.IsDelim(']') {
-					var v4 struct{ BlobSum string }
-					easyjson4ef6ea8bDecode1(in, &v4)
-					out.FSLayers = append(out.FSLayers, v4)
+					var v1 ManifestV2Config
+					(v1).UnmarshalEasyJSON(in)
+					out.Layers = append(out.Layers, v1)
 					in.WantComma()
 				}
 				in.Delim(']')
@@ -305,7 +219,7 @@ func easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes2(in *jlexer.Lexe
 		in.Consumed()
 	}
 }
-func easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes2(out *jwriter.Writer, in ManifestV1) {
+func easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes2(out *jwriter.Writer, in ManifestV2) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -315,17 +229,22 @@ func easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes2(out *jwriter.Wr
 		out.Int(int(in.SchemaVersion))
 	}
 	{
-		const prefix string = ",\"FSLayers\":"
+		const prefix string = ",\"Config\":"
 		out.RawString(prefix)
-		if in.FSLayers == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
+		(in.Config).MarshalEasyJSON(out)
+	}
+	{
+		const prefix string = ",\"Layers\":"
+		out.RawString(prefix)
+		if in.Layers == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
 			out.RawString("null")
 		} else {
 			out.RawByte('[')
-			for v5, v6 := range in.FSLayers {
-				if v5 > 0 {
+			for v2, v3 := range in.Layers {
+				if v2 > 0 {
 					out.RawByte(',')
 				}
-				easyjson4ef6ea8bEncode1(out, v6)
+				(v3).MarshalEasyJSON(out)
 			}
 			out.RawByte(']')
 		}
@@ -334,29 +253,29 @@ func easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes2(out *jwriter.Wr
 }
 
 // MarshalJSON supports json.Marshaler interface
-func (v ManifestV1) MarshalJSON() ([]byte, error) {
+func (v ManifestV2) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
 	easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes2(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
-func (v ManifestV1) MarshalEasyJSON(w *jwriter.Writer) {
+func (v ManifestV2) MarshalEasyJSON(w *jwriter.Writer) {
 	easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes2(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
-func (v *ManifestV1) UnmarshalJSON(data []byte) error {
+func (v *ManifestV2) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
 	easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes2(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
-func (v *ManifestV1) UnmarshalEasyJSON(l *jlexer.Lexer) {
+func (v *ManifestV2) UnmarshalEasyJSON(l *jlexer.Lexer) {
 	easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes2(l, v)
 }
-func easyjson4ef6ea8bDecode1(in *jlexer.Lexer, out *struct{ BlobSum string }) {
+func easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes3(in *jlexer.Lexer, out *ManifestV1Config) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -387,7 +306,7 @@ func easyjson4ef6ea8bDecode1(in *jlexer.Lexer, out *struct{ BlobSum string }) {
 		in.Consumed()
 	}
 }
-func easyjson4ef6ea8bEncode1(out *jwriter.Writer, in struct{ BlobSum string }) {
+func easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes3(out *jwriter.Writer, in ManifestV1Config) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -398,7 +317,136 @@ func easyjson4ef6ea8bEncode1(out *jwriter.Writer, in struct{ BlobSum string }) {
 	}
 	out.RawByte('}')
 }
-func easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes3(in *jlexer.Lexer, out *Manifest) {
+
+// MarshalJSON supports json.Marshaler interface
+func (v ManifestV1Config) MarshalJSON() ([]byte, error) {
+	w := jwriter.Writer{}
+	easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes3(&w, v)
+	return w.Buffer.BuildBytes(), w.Error
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v ManifestV1Config) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes3(w, v)
+}
+
+// UnmarshalJSON supports json.Unmarshaler interface
+func (v *ManifestV1Config) UnmarshalJSON(data []byte) error {
+	r := jlexer.Lexer{Data: data}
+	easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes3(&r, v)
+	return r.Error()
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *ManifestV1Config) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes3(l, v)
+}
+func easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes4(in *jlexer.Lexer, out *ManifestV1) {
+	isTopLevel := in.IsStart()
+	if in.IsNull() {
+		if isTopLevel {
+			in.Consumed()
+		}
+		in.Skip()
+		return
+	}
+	in.Delim('{')
+	for !in.IsDelim('}') {
+		key := in.UnsafeFieldName(false)
+		in.WantColon()
+		if in.IsNull() {
+			in.Skip()
+			in.WantComma()
+			continue
+		}
+		switch key {
+		case "SchemaVersion":
+			out.SchemaVersion = int(in.Int())
+		case "FSLayers":
+			if in.IsNull() {
+				in.Skip()
+				out.FSLayers = nil
+			} else {
+				in.Delim('[')
+				if out.FSLayers == nil {
+					if !in.IsDelim(']') {
+						out.FSLayers = make([]ManifestV1Config, 0, 4)
+					} else {
+						out.FSLayers = []ManifestV1Config{}
+					}
+				} else {
+					out.FSLayers = (out.FSLayers)[:0]
+				}
+				for !in.IsDelim(']') {
+					var v4 ManifestV1Config
+					(v4).UnmarshalEasyJSON(in)
+					out.FSLayers = append(out.FSLayers, v4)
+					in.WantComma()
+				}
+				in.Delim(']')
+			}
+		default:
+			in.SkipRecursive()
+		}
+		in.WantComma()
+	}
+	in.Delim('}')
+	if isTopLevel {
+		in.Consumed()
+	}
+}
+func easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes4(out *jwriter.Writer, in ManifestV1) {
+	out.RawByte('{')
+	first := true
+	_ = first
+	{
+		const prefix string = ",\"SchemaVersion\":"
+		out.RawString(prefix[1:])
+		out.Int(int(in.SchemaVersion))
+	}
+	{
+		const prefix string = ",\"FSLayers\":"
+		out.RawString(prefix)
+		if in.FSLayers == nil && (out.Flags&jwriter.NilSliceAsEmpty) == 0 {
+			out.RawString("null")
+		} else {
+			out.RawByte('[')
+			for v5, v6 := range in.FSLayers {
+				if v5 > 0 {
+					out.RawByte(',')
+				}
+				(v6).MarshalEasyJSON(out)
+			}
+			out.RawByte(']')
+		}
+	}
+	out.RawByte('}')
+}
+
+// MarshalJSON supports json.Marshaler interface
+func (v ManifestV1) MarshalJSON() ([]byte, error) {
+	w := jwriter.Writer{}
+	easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes4(&w, v)
+	return w.Buffer.BuildBytes(), w.Error
+}
+
+// MarshalEasyJSON supports easyjson.Marshaler interface
+func (v ManifestV1) MarshalEasyJSON(w *jwriter.Writer) {
+	easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes4(w, v)
+}
+
+// UnmarshalJSON supports json.Unmarshaler interface
+func (v *ManifestV1) UnmarshalJSON(data []byte) error {
+	r := jlexer.Lexer{Data: data}
+	easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes4(&r, v)
+	return r.Error()
+}
+
+// UnmarshalEasyJSON supports easyjson.Unmarshaler interface
+func (v *ManifestV1) UnmarshalEasyJSON(l *jlexer.Lexer) {
+	easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes4(l, v)
+}
+func easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes5(in *jlexer.Lexer, out *Manifest) {
 	isTopLevel := in.IsStart()
 	if in.IsNull() {
 		if isTopLevel {
@@ -436,7 +484,7 @@ func easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes3(in *jlexer.Lexe
 		in.Consumed()
 	}
 }
-func easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes3(out *jwriter.Writer, in Manifest) {
+func easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes5(out *jwriter.Writer, in Manifest) {
 	out.RawByte('{')
 	first := true
 	_ = first
@@ -456,23 +504,23 @@ func easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes3(out *jwriter.Wr
 // MarshalJSON supports json.Marshaler interface
 func (v Manifest) MarshalJSON() ([]byte, error) {
 	w := jwriter.Writer{}
-	easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes3(&w, v)
+	easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes5(&w, v)
 	return w.Buffer.BuildBytes(), w.Error
 }
 
 // MarshalEasyJSON supports easyjson.Marshaler interface
 func (v Manifest) MarshalEasyJSON(w *jwriter.Writer) {
-	easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes3(w, v)
+	easyjson4ef6ea8bEncodeGithubComElasticIoHavenInternalTypes5(w, v)
 }
 
 // UnmarshalJSON supports json.Unmarshaler interface
 func (v *Manifest) UnmarshalJSON(data []byte) error {
 	r := jlexer.Lexer{Data: data}
-	easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes3(&r, v)
+	easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes5(&r, v)
 	return r.Error()
 }
 
 // UnmarshalEasyJSON supports easyjson.Unmarshaler interface
 func (v *Manifest) UnmarshalEasyJSON(l *jlexer.Lexer) {
-	easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes3(l, v)
+	easyjson4ef6ea8bDecodeGithubComElasticIoHavenInternalTypes5(l, v)
 }

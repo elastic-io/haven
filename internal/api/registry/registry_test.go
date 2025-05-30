@@ -478,7 +478,7 @@ func TestDockerRegistryPathMiddleware(t *testing.T) {
 
 			// 添加中间件和测试处理程序
 			app.Use(func(c *fiber.Ctx) error {
-				return api.dockerRegistryPathMiddleware(c)
+				return api.registryPathMiddleware(c)
 			})
 
 			app.All("*", func(c *fiber.Ctx) error {

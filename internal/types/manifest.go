@@ -13,21 +13,23 @@ type MultiManifest struct {
 	Size        int
 }
 
+type ManifestV2Config struct {
+	Digest string
+}
+
 //go:generate easyjson -all person.go
 type ManifestV2 struct {
 	SchemaVersion int
-	Config        struct {
-		Digest string
-	}
-	Layers []struct {
-		Digest string
-	}
+	Config  ManifestV2Config
+	Layers []ManifestV2Config
+}
+
+type ManifestV1Config struct {
+	BlobSum string
 }
 
 //go:generate easyjson -all person.go
 type ManifestV1 struct {
 	SchemaVersion int
-	FSLayers      []struct {
-		BlobSum string
-	}
+	FSLayers      []ManifestV1Config
 }

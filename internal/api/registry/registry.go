@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/elastic-io/haven/internal/service"
+	"github.com/elastic-io/haven/internal/types"
 	"github.com/elastic-io/haven/internal/utils"
 	"github.com/gofiber/fiber/v2"
 
@@ -22,6 +23,7 @@ func init() {
 
 type RegistryAPI struct {
 	name    string
+	streamThreshold int
 	service service.RegistryService
 }
 
@@ -33,6 +35,7 @@ func (api *RegistryAPI) Init(c *config.Config) {
 	if err = service.Init(c); err != nil {
 		panic(fmt.Errorf(err.Error()))
 	}
+	api.streamThreshold = 64 * types.MB
 	api.service = service
 }
 
@@ -248,7 +251,7 @@ func (r *RegistryAPI) handlePushBlob(c *fiber.Ctx) error {
 	if len(c.Body()) > 0 {
 		// 如果有请求体，直接读取
 		// 对于大文件，使用流式处理
-		if c.Request().Header.ContentLength() > 50*1024*1024 { // 50MB
+		if c.Request().Header.ContentLength() > r.streamThreshold {
 			// 创建临时文件
 			tempFile, err := os.CreateTemp("", "blob-*")
 			if err != nil {
