@@ -119,4 +119,4 @@ func calculateMultipartETag(etags []string) string {
 
 	return fmt.Sprintf("\"%s-%d\"", hex.EncodeToString(hash[:]), len(etags))
 }
-	*/
+*/
