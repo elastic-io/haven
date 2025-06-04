@@ -1,7 +1,11 @@
 package storage
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
+	"strings"
+	"time"
 
 	"github.com/elastic-io/haven/internal/types"
 )
@@ -12,6 +16,12 @@ type Storage interface {
 	// 关闭存储
 	Close() error
 }
+
+const (
+	// 分段上传相关常量
+	MaxMultipartLifetime = 7 * 24 * time.Hour // 7天，与S3一致
+	CleanupInterval      = 1 * time.Hour      // 清理过期上传的间隔
+)
 
 type S3 interface {
 	// 桶操作
@@ -50,3 +60,63 @@ func NewStorage(engine, path string) (Storage, error) {
 	}
 	return nil, fmt.Errorf("backend %s not found", engine)
 }
+
+// generateUploadID 生成唯一的上传ID
+func GenerateUploadID(bucket, key string) string {
+	now := time.Now().UnixNano()
+	hash := md5.Sum([]byte(fmt.Sprintf("%s-%s-%d", bucket, key, now)))
+	return hex.EncodeToString(hash[:])
+}
+
+// calculateETag 计算数据的MD5哈希作为ETag
+func CalculateETag(data []byte) string {
+	hash := md5.Sum(data)
+	return fmt.Sprintf("\"%s\"", hex.EncodeToString(hash[:]))
+}
+
+// calculateMultipartETag 计算分段上传的最终ETag
+// S3兼容的格式: "{md5-of-all-etags}-{number-of-parts}"
+func CalculateMultipartETag(etags []string) string {
+	// 移除每个ETag的引号
+	cleanETags := make([]string, len(etags))
+	for i, etag := range etags {
+		cleanETags[i] = strings.Trim(etag, "\"")
+	}
+
+	// 连接所有ETag并计算MD5
+	combined := strings.Join(cleanETags, "")
+	hash := md5.Sum([]byte(combined))
+
+	return fmt.Sprintf("\"%s-%d\"", hex.EncodeToString(hash[:]), len(etags))
+}
+
+/*
+// generateUploadID 生成唯一的上传ID
+func generateUploadID(bucket, key string) string {
+	now := time.Now().UnixNano()
+	hash := md5.Sum([]byte(fmt.Sprintf("%s-%s-%d", bucket, key, now)))
+	return hex.EncodeToString(hash[:])
+}
+
+// calculateETag 计算数据的MD5哈希作为ETag
+func calculateETag(data []byte) string {
+	hash := md5.Sum(data)
+	return fmt.Sprintf("\"%s\"", hex.EncodeToString(hash[:]))
+}
+
+// calculateMultipartETag 计算分段上传的最终ETag
+// S3兼容的格式: "{md5-of-all-etags}-{number-of-parts}"
+func calculateMultipartETag(etags []string) string {
+	// 移除每个ETag的引号
+	cleanETags := make([]string, len(etags))
+	for i, etag := range etags {
+		cleanETags[i] = strings.Trim(etag, "\"")
+	}
+
+	// 连接所有ETag并计算MD5
+	combined := strings.Join(cleanETags, "")
+	hash := md5.Sum([]byte(combined))
+
+	return fmt.Sprintf("\"%s-%d\"", hex.EncodeToString(hash[:]), len(etags))
+}
+	*/

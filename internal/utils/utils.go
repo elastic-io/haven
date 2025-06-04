@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"math/rand"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -67,4 +68,14 @@ func ParseSize(s, unit string) (int, error) {
 		return int(amt), nil
 	}
 	return -1, fmt.Errorf("can not parse %q as num[gGmMkK]:%w", s, strconv.ErrSyntax)
+}
+
+func FileExist(file string) bool {
+	_, err := os.Stat(file)
+	if err == nil {
+		return true
+	} else if os.IsNotExist(err) {
+		return false
+	}
+	panic(err)
 }

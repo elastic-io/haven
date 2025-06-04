@@ -2,9 +2,6 @@ package bolt
 
 import (
 	"bytes"
-	"crypto/md5"
-	"encoding/hex"
-
 	"fmt"
 	"sort"
 	"sync"
@@ -29,10 +26,6 @@ const (
 	bucketsBucket   = "buckets"
 	objectsBucket   = "objects"
 	multipartBucket = "multipart"
-
-	// 分段上传相关常量
-	maxMultipartLifetime = 7 * 24 * time.Hour // 7天，与S3一致
-	cleanupInterval      = 1 * time.Hour      // 清理过期上传的间隔
 )
 
 // BoltS3Storage 实现了S3types接口，使用BoltDB作为后端
@@ -97,7 +90,7 @@ func (s *BoltS3Storage) Close() error {
 
 // startCleanupRoutine 启动后台例程，定期清理过期的分段上传
 func (s *BoltS3Storage) startCleanupRoutine() {
-	s.cleanupTicker = time.NewTicker(cleanupInterval)
+	s.cleanupTicker = time.NewTicker(storage.CleanupInterval)
 
 	go func() {
 		for {
@@ -139,7 +132,7 @@ func (s *BoltS3Storage) cleanupExpiredUploads() error {
 			if err != nil {
 				return err
 			}
-			if now.Sub(info.CreatedAt) > maxMultipartLifetime {
+			if now.Sub(info.CreatedAt) > storage.MaxMultipartLifetime {
 				expiredIDs = append(expiredIDs, info.UploadID)
 			}
 
@@ -203,7 +196,7 @@ func (s *BoltS3Storage) CreateMultipartUpload(bucket, key, contentType string, m
 	}
 
 	// 生成唯一的上传ID
-	uploadID := generateUploadID(bucket, key)
+	uploadID := storage.GenerateUploadID(bucket, key)
 
 	err = s.db.Update(func(tx *bbolt.Tx) error {
 		// 获取multipart桶
@@ -260,7 +253,7 @@ func (s *BoltS3Storage) UploadPart(bucket, key, uploadID string, partNumber int,
 	log.Logger.Info("types: Uploading part ", partNumber, " for ", key, " in bucket ", bucket, " (size: ", len(data), " bytes)")
 
 	// 计算MD5哈希作为ETag
-	etag := calculateETag(data)
+	etag := storage.CalculateETag(data)
 
 	err := s.db.Update(func(tx *bbolt.Tx) error {
 		// 获取multipart桶
@@ -434,7 +427,7 @@ func (s *BoltS3Storage) CompleteMultipartUpload(bucket, key, uploadID string, pa
 	}
 
 	// 生成最终的ETag (与S3兼容)
-	finalETag = calculateMultipartETag(allETags)
+	finalETag = storage.CalculateMultipartETag(allETags)
 
 	// 存储合并后的对象
 	err = s.PutObject(bucket, &types.S3ObjectData{
@@ -886,33 +879,4 @@ func (s *BoltS3Storage) DeleteObject(bucket, key string) error {
 
 		return b.Delete([]byte(fullKey))
 	})
-}
-
-// generateUploadID 生成唯一的上传ID
-func generateUploadID(bucket, key string) string {
-	now := time.Now().UnixNano()
-	hash := md5.Sum([]byte(fmt.Sprintf("%s-%s-%d", bucket, key, now)))
-	return hex.EncodeToString(hash[:])
-}
-
-// calculateETag 计算数据的MD5哈希作为ETag
-func calculateETag(data []byte) string {
-	hash := md5.Sum(data)
-	return fmt.Sprintf("\"%s\"", hex.EncodeToString(hash[:]))
-}
-
-// calculateMultipartETag 计算分段上传的最终ETag
-// S3兼容的格式: "{md5-of-all-etags}-{number-of-parts}"
-func calculateMultipartETag(etags []string) string {
-	// 移除每个ETag的引号
-	cleanETags := make([]string, len(etags))
-	for i, etag := range etags {
-		cleanETags[i] = strings.Trim(etag, "\"")
-	}
-
-	// 连接所有ETag并计算MD5
-	combined := strings.Join(cleanETags, "")
-	hash := md5.Sum([]byte(combined))
-
-	return fmt.Sprintf("\"%s-%d\"", hex.EncodeToString(hash[:]), len(etags))
 }

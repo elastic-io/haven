@@ -4,9 +4,16 @@ import (
 	"time"
 )
 
+const (
+	AK     = "ak"
+	SK     = "sk"
+	Token  = "token"
+	Region = "region"
+)
+
 // MultipartPart 表示分段上传的一个部分
 //
-//go:generate easyjson -all person.go
+//go:generate easyjson -all s3.go
 type MultipartPart struct {
 	PartNumber int
 	ETag       string
@@ -14,7 +21,7 @@ type MultipartPart struct {
 
 // multipartUploadInfo 存储分段上传的元数据
 //
-//go:generate easyjson -all person.go
+//go:generate easyjson -all s3.go
 type MultipartUploadInfo struct {
 	Bucket      string
 	Key         string
@@ -24,7 +31,7 @@ type MultipartUploadInfo struct {
 	CreatedAt   time.Time
 }
 
-//go:generate easyjson -all person.go
+//go:generate easyjson -all s3.go
 type PartInfo struct {
 	PartNumber int
 	ETag       string
@@ -33,7 +40,7 @@ type PartInfo struct {
 
 // BucketInfo 表示存储桶的元数据
 //
-//go:generate easyjson -all person.go
+//go:generate easyjson -all s3.go
 type BucketInfo struct {
 	Name         string
 	CreationDate time.Time
@@ -41,7 +48,7 @@ type BucketInfo struct {
 
 // S3ObjectInfo 表示 S3 对象的元数据
 //
-//go:generate easyjson -all person.go
+//go:generate easyjson -all s3.go
 type S3ObjectInfo struct {
 	Key          string
 	Size         int64
@@ -51,7 +58,7 @@ type S3ObjectInfo struct {
 
 // S3ObjectData 表示 S3 对象的完整数据
 //
-//go:generate easyjson -all person.go
+//go:generate easyjson -all s3.go
 type S3ObjectData struct {
 	Key          string
 	Data         []byte
