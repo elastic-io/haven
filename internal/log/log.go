@@ -37,32 +37,53 @@ func DefaultLogConfig() LogConfig {
 
 // InitLogger 初始化日志系统
 func InitLogger(config LogConfig) {
-	var writeSyncers []zapcore.WriteSyncer
+    // 创建编码器
+    encoder := getEncoder()
+    
+    // 定义日志级别过滤器
+    highPriority := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+        return lvl >= zapcore.ErrorLevel
+    })
+    
+    lowPriority := zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+        return lvl < zapcore.ErrorLevel && lvl >= config.Level
+    })
+    
+    // 创建核心组件集合
+    var cores []zapcore.Core
+    
+    // 处理文件输出
+    if config.Filename != "" {
 
-	// 处理文件输出
-	if config.Filename == "" {
-		// 如果文件名为空，使用/dev/stderr
-		stderrSyncer := zapcore.AddSync(os.Stderr)
-		writeSyncers = append(writeSyncers, stderrSyncer)
-	} else {
-		// 否则使用指定的文件
-		fileWriter := getLogWriter(config)
-		writeSyncers = append(writeSyncers, fileWriter)
-
-		// 只有当输出到实际文件时，才考虑额外的控制台输出
-		if config.Console {
-			consoleSyncer := zapcore.AddSync(os.Stdout)
-			writeSyncers = append(writeSyncers, consoleSyncer)
-		}
-	}
-
-	// 合并所有输出
-	multiWriteSyncer := zapcore.NewMultiWriteSyncer(writeSyncers...)
-
-	encoder := getEncoder()
-	core := zapcore.NewCore(encoder, multiWriteSyncer, config.Level)
-	logger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
-	Logger = logger.Sugar()
+        fileWriter := getLogWriter(config)
+        // 文件同时接收所有级别日志
+        fileCore := zapcore.NewCore(encoder, fileWriter, zap.LevelEnablerFunc(func(lvl zapcore.Level) bool {
+            return lvl >= config.Level
+        }))
+        
+        cores = append(cores, fileCore)
+		config.Console = false
+    }
+    
+    // 处理控制台输出
+    if config.Console {
+        // 标准输出处理低优先级日志
+        stdoutSyncer := zapcore.AddSync(os.Stdout)
+        stdoutCore := zapcore.NewCore(encoder, stdoutSyncer, lowPriority)
+        
+        // 标准错误处理高优先级日志
+        stderrSyncer := zapcore.AddSync(os.Stderr)
+        stderrCore := zapcore.NewCore(encoder, stderrSyncer, highPriority)
+        
+        cores = append(cores, stdoutCore, stderrCore)
+    }
+    
+    // 组合所有core
+    core := zapcore.NewTee(cores...)
+    
+    // 创建logger
+    logger := zap.New(core, zap.AddCaller(), zap.AddCallerSkip(1))
+    Logger = logger.Sugar()
 }
 
 // 简化初始化，使用默认配置

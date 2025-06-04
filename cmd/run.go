@@ -107,10 +107,10 @@ func Main(ctx *cli.Context) error {
 
 	select {
 	case receivedSignal := <-signalCh:
-		log.Logger.Debug("Received signal: %v, initiating graceful shutdown...\n", receivedSignal)
+		log.Logger.Debug("Received signal: ", receivedSignal, ", initiating graceful shutdown...")
 	case err = <-errCh:
 		if err != nil {
-			log.Logger.Debug("Application error: %v, shutting down...\n", err)
+			log.Logger.Debug("Application error: ", err.Error(), ", shutting down...")
 		} else {
 			log.Logger.Debug("Application completed successfully, shutting down...")
 		}
@@ -129,7 +129,7 @@ func Main(ctx *cli.Context) error {
 	select {
 	case stopErr := <-stopErrCh:
 		if stopErr != nil {
-			log.Logger.Debug("Error during shutdown: %v\n", stopErr)
+			log.Logger.Debug("Error during shutdown: ", stopErr)
 			if err == nil {
 				err = stopErr
 			}
