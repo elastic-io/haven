@@ -62,6 +62,11 @@ func Execute(name, usage, version, commit string) {
 			Value: "256M",
 			Usage: "set the body size",
 		},
+		cli.StringFlag{
+			Name:   "tmpdir, t",
+			Value:  "./tmp",
+			Usage: "set the tmp directory",
+		},
 	}
 
 	app.Commands = []cli.Command{
@@ -85,6 +90,7 @@ func Execute(name, usage, version, commit string) {
 			}
 		}
 		log.Init(ctx.String("log"), ctx.String("log-level"))
+		os.Setenv("TMPDIR", ctx.String("tmpdir"))
 		return nil
 	}
 
