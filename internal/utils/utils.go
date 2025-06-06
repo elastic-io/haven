@@ -10,6 +10,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/elastic-io/haven/internal/log"
 )
 
 // 生成唯一的上传 ID
@@ -78,4 +80,26 @@ func FileExist(file string) bool {
 		return false
 	}
 	panic(err)
+}
+
+func SafeGo(fn func()) {
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Logger.Error(fmt.Errorf("goroutine panic: %v\n", r), "goroutine panic")
+			}
+		}()
+		fn()
+	}()
+}
+
+func SafeJobWrapper(job func(), funcName string) func() {
+	return func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Logger.Error(fmt.Errorf("panic reason: %v", r), "cron task recovered from panic", "funcName", funcName)
+			}
+		}()
+		job()
+	}
 }

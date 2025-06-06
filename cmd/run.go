@@ -11,6 +11,7 @@ import (
 	"github.com/elastic-io/haven/app"
 	"github.com/elastic-io/haven/internal/log"
 	"github.com/elastic-io/haven/internal/options"
+	"github.com/elastic-io/haven/internal/utils"
 	"github.com/urfave/cli"
 )
 
@@ -96,12 +97,12 @@ func Main(ctx *cli.Context) error {
 
 	errCh := make(chan error, 1)
 
-	go func() {
+	utils.SafeGo(func() {
 		if err := app.Run(); err != nil {
 			errCh <- err
 		}
 		close(errCh)
-	}()
+	})
 
 	log.Logger.Info("Application startup successfully")
 
@@ -121,10 +122,10 @@ func Main(ctx *cli.Context) error {
 	defer cancel()
 
 	stopErrCh := make(chan error, 1)
-	go func() {
+	utils.SafeGo(func() {
 		stopErrCh <- app.Stop()
 		close(stopErrCh)
-	}()
+	})
 
 	select {
 	case stopErr := <-stopErrCh:

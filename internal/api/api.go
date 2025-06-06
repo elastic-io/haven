@@ -2,10 +2,12 @@ package api
 
 import (
 	"fmt"
+	"runtime/debug"
 	"time"
 
 	"github.com/elastic-io/haven/internal/config"
 	"github.com/elastic-io/haven/internal/log"
+	"github.com/elastic-io/haven/internal/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/basicauth"
 )
@@ -34,15 +36,46 @@ func New(c *config.Config) *Server {
 	s := &Server{
 		config: c,
 		router: fiber.New(fiber.Config{
-			DisableStartupMessage: true,
-			BodyLimit:             c.BodyLimit,
-			StrictRouting:         true,
-			CaseSensitive:         true,
+			BodyLimit:                    c.BodyLimit,
+			DisableStartupMessage:        true,
+			StrictRouting:                true,
+			CaseSensitive:                true,
+			StreamRequestBody:            true,
+			ReadTimeout:                  300 * time.Second,
+			WriteTimeout:                 300 * time.Second,
+			IdleTimeout:                  360 * time.Second,
+			ReduceMemoryUsage:            true,
+			DisablePreParseMultipartForm: true,          // 禁用预解析多部分表单
+			ReadBufferSize:               16 * types.KB, // 增加读取缓冲区大小
+			WriteBufferSize:              16 * types.KB, // 增加写入缓冲区大小
+
+			ErrorHandler: func(c *fiber.Ctx, err error) error {
+				// 自定义错误处理
+				code := fiber.StatusInternalServerError
+				if e, ok := err.(*fiber.Error); ok {
+					code = e.Code
+				}
+				log.Logger.Error("HTTP Error: ", err)
+				return c.Status(code).JSON(fiber.Map{
+					"error": err.Error(),
+				})
+			},
 		}),
 	}
 
 	// 添加日志中间件
 	s.router.Use(loggingMiddleware())
+
+	// 异常处理
+	s.router.Use(func(c *fiber.Ctx) error {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Logger.Error(fmt.Sprintf("Recovered from panic: %v\n%s", r, debug.Stack()))
+				c.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
+			}
+		}()
+		return c.Next()
+	})
 
 	return s
 }

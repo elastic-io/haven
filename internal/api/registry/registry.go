@@ -1,6 +1,8 @@
 package registry
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"os"
@@ -209,6 +211,7 @@ func (r *RegistryAPI) handlePushManifest(c *fiber.Ctx) error {
 }
 
 // 处理Blob分块上传 (PATCH 请求)
+/*
 func (r *RegistryAPI) handleBlobUploadPatch(c *fiber.Ctx) error {
 	// 从中间件中获取仓库名称和UUID
 	repository := c.Locals("repository").(string)
@@ -219,9 +222,66 @@ func (r *RegistryAPI) handleBlobUploadPatch(c *fiber.Ctx) error {
 	// 获取上传数据对象
 	uploadData := getOrCreateUploadData(repository, uuid)
 
-	// 追加数据块
-	if err := uploadData.AppendData(c.Body()); err != nil {
-		return c.Status(fiber.StatusInternalServerError).SendString("Failed to process upload data")
+	// 检查是否为流式请求
+	if c.Request().IsBodyStream() {
+		log.Logger.Info("Processing streaming request for blob patch")
+		// 使用流式处理
+		if err := uploadData.AppendStream(c.Request().BodyStream()); err != nil {
+			log.Logger.Error("Failed to append stream data: ", err)
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to process upload data")
+		}
+	} else {
+		// 追加数据块
+		if err := uploadData.AppendData(c.Body()); err != nil {
+			log.Logger.Error("Failed to append data: ", err)
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to process upload data")
+		}
+	}
+
+	// 设置响应头
+	c.Set("Range", fmt.Sprintf("0-%d", uploadData.Size()-1))
+	c.Set("Docker-Upload-UUID", uuid)
+	c.Set("Location", fmt.Sprintf("/v2/%s/blobs/uploads/%s", repository, uuid))
+	return c.SendStatus(fiber.StatusAccepted)
+}
+*/
+
+// 在 handleBlobUploadPatch 方法中添加错误处理
+func (r *RegistryAPI) handleBlobUploadPatch(c *fiber.Ctx) error {
+	// 从中间件中获取仓库名称和UUID
+	repository := c.Locals("repository").(string)
+	uuid := c.Locals("uuid").(string)
+
+	log.Logger.Info("Patch blob: ", repository, " uuid: ", uuid)
+
+	// 获取上传数据对象
+	uploadData := getOrCreateUploadData(repository, uuid)
+
+	// 检查是否为流式请求
+	if c.Request().IsBodyStream() {
+		log.Logger.Info("Processing streaming request for blob patch")
+
+		// 使用安全的方式处理流
+		bodyStream := c.Request().BodyStream()
+		if bodyStream == nil {
+			log.Logger.Error("Nil body stream received")
+			return c.Status(fiber.StatusBadRequest).SendString("Invalid request body")
+		}
+
+		// 包装读取器以捕获错误
+		safeReader := &safeReader{r: bodyStream}
+
+		// 使用流式处理
+		if err := uploadData.AppendStream(safeReader); err != nil {
+			log.Logger.Error("Failed to append stream data: ", err)
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to process upload data")
+		}
+	} else {
+		// 追加数据块
+		if err := uploadData.AppendData(c.Body()); err != nil {
+			log.Logger.Error("Failed to append data: ", err)
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to process upload data")
+		}
 	}
 
 	// 设置响应头
@@ -231,7 +291,123 @@ func (r *RegistryAPI) handleBlobUploadPatch(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusAccepted)
 }
 
+// 添加一个安全的读取器包装器
+type safeReader struct {
+	r io.Reader
+}
+
+func (sr *safeReader) Read(p []byte) (n int, err error) {
+	if sr.r == nil {
+		return 0, io.EOF
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Logger.Error("Recovered from panic in reader: ", r)
+			err = fmt.Errorf("reader panic: %v", r)
+			n = 0
+		}
+	}()
+
+	return sr.r.Read(p)
+}
+
 // 处理Blob推送
+func (r *RegistryAPI) handlePushBlob(c *fiber.Ctx) error {
+	// 从中间件中获取仓库名称和UUID
+	repository := c.Locals("repository").(string)
+	uuid := c.Locals("uuid").(string)
+
+	digest := c.Query("digest")
+	if digest == "" {
+		return c.Status(fiber.StatusBadRequest).SendString("Missing digest parameter")
+	}
+
+	log.Logger.Info("Push blob: ", repository, " uuid: ", uuid, " digest: ", digest)
+
+	// 创建临时文件用于处理和验证数据
+	tempFile, err := os.CreateTemp("", "blob-*")
+	if err != nil {
+		log.Logger.Error("Failed to create temp file: ", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to create temp file")
+	}
+	tempPath := tempFile.Name()
+	defer os.Remove(tempPath)
+	defer tempFile.Close()
+
+	// 创建哈希计算器
+	hasher := sha256.New()
+	multiWriter := io.MultiWriter(tempFile, hasher)
+
+	// 处理请求体或上传数据
+	if c.Request().Header.ContentLength() > 0 {
+		// 有请求体
+		if c.Request().IsBodyStream() {
+			// 流式处理
+			log.Logger.Info("Processing streaming request body")
+			if _, err := io.Copy(multiWriter, c.Request().BodyStream()); err != nil {
+				log.Logger.Error("Failed to process request stream: ", err)
+				return c.Status(fiber.StatusInternalServerError).SendString("Failed to process request body")
+			}
+		} else {
+			// 非流式处理，但直接写入文件而不是加载到内存
+			if _, err := multiWriter.Write(c.Body()); err != nil {
+				log.Logger.Error("Failed to write request body: ", err)
+				return c.Status(fiber.StatusInternalServerError).SendString("Failed to process request body")
+			}
+		}
+	} else {
+		// 从临时存储获取之前通过PATCH上传的数据
+		uploadData := getUploadData(repository, uuid)
+		if uploadData == nil {
+			return c.Status(fiber.StatusNotFound).SendString("No upload data found")
+		}
+
+		// 流式写入临时文件和哈希计算器
+		if err := uploadData.WriteTo(multiWriter); err != nil {
+			log.Logger.Error("Failed to process upload data: ", err)
+			return c.Status(fiber.StatusInternalServerError).SendString("Failed to process upload data")
+		}
+
+		// 清理临时数据
+		removeUploadData(repository, uuid)
+	}
+
+	// 计算摘要
+	calculatedDigest := "sha256:" + hex.EncodeToString(hasher.Sum(nil))
+
+	// 验证摘要
+	if digest != calculatedDigest {
+		log.Logger.Warn("Digest mismatch: expected ", digest, " but got ", calculatedDigest)
+		return c.Status(fiber.StatusBadRequest).SendString("Digest mismatch")
+	}
+
+	// 重置文件指针
+	if _, err := tempFile.Seek(0, 0); err != nil {
+		log.Logger.Error("Failed to reset file pointer: ", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to process data")
+	}
+
+	// 获取文件大小
+	fileInfo, err := tempFile.Stat()
+	if err != nil {
+		log.Logger.Error("Failed to get file info: ", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to process data")
+	}
+	fileSize := fileInfo.Size()
+
+	// 使用流式方法存储blob
+	if err := r.service.PutBlobFromReader(repository, digest, tempFile, fileSize); err != nil {
+		log.Logger.Error("Failed to store blob: ", err)
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to store blob")
+	}
+
+	c.Set("Docker-Content-Digest", digest)
+	c.Set("Location", fmt.Sprintf("/v2/%s/blobs/%s", repository, digest))
+	return c.SendStatus(fiber.StatusCreated)
+}
+
+/*
 func (r *RegistryAPI) handlePushBlob(c *fiber.Ctx) error {
 	// 从中间件中获取仓库名称和UUID
 	repository := c.Locals("repository").(string)
@@ -304,6 +480,7 @@ func (r *RegistryAPI) handlePushBlob(c *fiber.Ctx) error {
 	c.Set("Location", fmt.Sprintf("/v2/%s/blobs/%s", repository, digest))
 	return c.SendStatus(fiber.StatusCreated)
 }
+*/
 
 // 处理镜像清单拉取
 func (r *RegistryAPI) handlePullManifest(c *fiber.Ctx) error {

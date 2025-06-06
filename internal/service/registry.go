@@ -2,6 +2,8 @@ package service
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"strings"
 	"time"
 
@@ -28,6 +30,7 @@ type RegistryService interface {
 	ListBlobs() ([]string, error)
 	ListManifests() ([]string, error)
 	GetManifestReferences(blobDigest string) ([]string, error)
+	PutBlobFromReader(repository, digest string, reader io.Reader, size int64) error
 }
 
 // registryService 提供Docker Registry的业务逻辑
@@ -576,6 +579,147 @@ func (r *registryService) GetManifestReferences(blobDigest string) ([]string, er
 	}
 
 	return references, nil
+}
+
+// PutBlobFromReader 从读取器流式存储blob
+func (r *registryService) PutBlobFromReader(repository, digest string, reader io.Reader, size int64) error {
+	log.Logger.Info("Registry: Putting blob ", digest, " for repository ", repository, " size: ", size, " bytes")
+
+	// 确保registry桶存在
+	exists, err := r.storage.BucketExists(registryBucket)
+	if err != nil {
+		return fmt.Errorf("failed to check if bucket exists: %w", err)
+	}
+
+	if !exists {
+		log.Logger.Info("Creating registry bucket as it doesn't exist")
+		if err := r.storage.CreateBucket(registryBucket); err != nil {
+			return fmt.Errorf("failed to create registry bucket: %w", err)
+		}
+	}
+
+	key := fmt.Sprintf("%s/%s/%s", repository, blobsPath, digest)
+
+	// 对于小文件，直接使用PutObject
+	if size < int64(r.multipartThreshold) {
+		log.Logger.Info("Using direct upload for small blob: ", digest)
+
+		// 读取所有数据
+		data, err := io.ReadAll(reader)
+		if err != nil {
+			return fmt.Errorf("failed to read data: %w", err)
+		}
+
+		blobObject := &types.S3ObjectData{
+			Key:          key,
+			Data:         data,
+			ContentType:  "application/octet-stream",
+			LastModified: time.Now(),
+			ETag:         "\"" + utils.ComputeSHA256(data) + "\"",
+			Metadata:     nil,
+		}
+
+		return r.storage.PutObject(registryBucket, blobObject)
+	}
+
+	// 对于大文件，使用分块上传
+	log.Logger.Info("Using chunked upload for large blob: ", digest)
+	return r.chunkedStreamUpload(registryBucket, key, reader, size, digest)
+}
+
+// chunkedStreamUpload 使用分块方式流式上传
+func (r *registryService) chunkedStreamUpload(bucket, key string, reader io.Reader, size int64, digest string) error {
+	log.Logger.Info("Using chunked stream upload for blob: ", digest)
+
+	// 计算总块数
+	totalChunks := (size + int64(r.chunkLength) - 1) / int64(r.chunkLength)
+	log.Logger.Info("Total chunks: ", totalChunks, " for blob ", digest)
+
+	// 创建临时目录存储分块
+	tempDir, err := os.MkdirTemp("", "blob-chunks-*")
+	if err != nil {
+		return fmt.Errorf("failed to create temp directory: %w", err)
+	}
+	defer os.RemoveAll(tempDir)
+
+	// 读取和上传分块
+	buffer := make([]byte, r.chunkLength)
+	for i := int64(0); i < totalChunks; i++ {
+		// 读取一个块
+		bytesRead, err := io.ReadFull(reader, buffer)
+		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+			return fmt.Errorf("failed to read chunk %d: %w", i+1, err)
+		}
+
+		// 如果是最后一块，可能不满
+		chunkData := buffer[:bytesRead]
+		chunkKey := fmt.Sprintf("%s.part%d", key, i)
+
+		log.Logger.Info("Uploading chunk ", i+1, " of ", totalChunks, " for blob ", digest, " (size: ", len(chunkData), " bytes)")
+
+		chunkObject := &types.S3ObjectData{
+			Key:          chunkKey,
+			Data:         chunkData,
+			ContentType:  "application/octet-stream",
+			LastModified: time.Now(),
+			ETag:         "\"" + utils.ComputeSHA256(chunkData) + "\"",
+			Metadata:     nil,
+		}
+
+		if err := r.storage.PutObject(bucket, chunkObject); err != nil {
+			// 清理已上传的块
+			for j := int64(0); j < i; j++ {
+				cleanupKey := fmt.Sprintf("%s.part%d", key, j)
+				r.storage.DeleteObject(bucket, cleanupKey)
+			}
+			return fmt.Errorf("failed to upload chunk %d: %w", i+1, err)
+		}
+	}
+
+	// 创建一个清单文件，记录所有块
+	mm := &types.MultiManifest{
+		TotalChunks: int(totalChunks),
+		Digest:      digest,
+		Size:        int(size),
+	}
+
+	manifestData, err := mm.MarshalJSON()
+	if err != nil {
+		return fmt.Errorf("failed to create chunk manifest: %w", err)
+	}
+
+	manifestObject := &types.S3ObjectData{
+		Key:          key + ".manifest",
+		Data:         manifestData,
+		ContentType:  "application/json",
+		LastModified: time.Now(),
+		ETag:         "\"" + utils.ComputeSHA256(manifestData) + "\"",
+		Metadata:     nil,
+	}
+
+	if err := r.storage.PutObject(bucket, manifestObject); err != nil {
+		return fmt.Errorf("failed to upload chunk manifest: %w", err)
+	}
+
+	// 创建一个空的主对象，指向清单
+	emptyObject := &types.S3ObjectData{
+		Key:          key,
+		Data:         []byte{},
+		ContentType:  "application/octet-stream",
+		LastModified: time.Now(),
+		ETag:         "\"" + digest + "\"",
+		Metadata: map[string]string{
+			"chunked":  "true",
+			"manifest": key + ".manifest",
+		},
+	}
+
+	if err := r.storage.PutObject(bucket, emptyObject); err != nil {
+		return fmt.Errorf("failed to create main object: %w", err)
+	}
+
+	log.Logger.Info("Successfully uploaded blob ", digest, " using chunked stream upload")
+	return nil
 }
 
 // containsBlobReference 检查清单是否引用了指定的blob

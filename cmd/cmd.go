@@ -59,7 +59,7 @@ func Execute(name, usage, version, commit string) {
 		},
 		cli.StringFlag{
 			Name:  "body",
-			Value: "3G",
+			Value: "256M",
 			Usage: "set the body size",
 		},
 	}
