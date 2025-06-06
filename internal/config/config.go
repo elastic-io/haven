@@ -18,6 +18,9 @@ type Config struct {
 	BodyLimit    int
 	MaxMultipart string
 	ChunkLength  string
+	ReadTimeout  int
+	WriteTimeout int
+	IdleTimeout  int
 	Modules      []string
 
 	Storage storage.Storage
@@ -33,6 +36,9 @@ func New(ctx *cli.Context) *Config {
 	c.KeyFile = ctx.String("key")
 	c.MaxMultipart = ctx.String("max-multipart")
 	c.ChunkLength = ctx.String("chunk-length")
+	c.ReadTimeout = ctx.Int("read-timeout")
+	c.WriteTimeout = ctx.Int("write-timeout")
+	c.IdleTimeout = ctx.Int("idle-timeout")
 	c.Modules = ctx.GlobalStringSlice("mod")
 	return c
 }

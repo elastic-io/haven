@@ -72,6 +72,21 @@ var runCommand = cli.Command{
 			Value: "8M",
 			Usage: "Chunk length for multipart upload",
 		},
+		cli.IntFlag{
+			Name:  "read-timeout, rt",
+			Value: 600,
+			Usage: "Read timeout for HTTP requests",
+		},
+		cli.IntFlag{
+			Name:  "write-timeout, wt",
+			Value: 600,
+			Usage: "Write timeout for HTTP requests",
+		},
+		cli.IntFlag{
+			Name:  "idel-timeout, it",
+			Value: 1800,
+			Usage: "Chunk idle timeout for multipart upload",
+		},
 	},
 	Action: func(ctx *cli.Context) error {
 		if err := checkArgs(ctx, 1, exactArgs); err != nil {

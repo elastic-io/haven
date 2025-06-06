@@ -10,6 +10,7 @@ import (
 	"github.com/elastic-io/haven/internal/types"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/basicauth"
+	"github.com/gofiber/fiber/v2/middleware/recover"
 )
 
 type API interface {
@@ -41,9 +42,9 @@ func New(c *config.Config) *Server {
 			StrictRouting:                true,
 			CaseSensitive:                true,
 			StreamRequestBody:            true,
-			ReadTimeout:                  300 * time.Second,
-			WriteTimeout:                 300 * time.Second,
-			IdleTimeout:                  360 * time.Second,
+			ReadTimeout:                  time.Duration(c.ReadTimeout) * time.Second,
+			WriteTimeout:                 time.Duration(c.WriteTimeout) * time.Second,
+			IdleTimeout:                  time.Duration(c.IdleTimeout) * time.Second,
 			ReduceMemoryUsage:            true,
 			DisablePreParseMultipartForm: true,          // 禁用预解析多部分表单
 			ReadBufferSize:               16 * types.KB, // 增加读取缓冲区大小
@@ -67,15 +68,14 @@ func New(c *config.Config) *Server {
 	s.router.Use(loggingMiddleware())
 
 	// 异常处理
-	s.router.Use(func(c *fiber.Ctx) error {
-		defer func() {
-			if r := recover(); r != nil {
-				log.Logger.Error(fmt.Sprintf("Recovered from panic: %v\n%s", r, debug.Stack()))
-				c.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
-			}
-		}()
-		return c.Next()
-	})
+	s.router.Use(recover.New(recover.Config{
+		EnableStackTrace: true,
+		StackTraceHandler: func(c *fiber.Ctx, e interface{}) {
+			log.Logger.Error(fmt.Sprintf("Recovered from panic: %v\n%s", e, debug.Stack()))
+			c.Status(fiber.StatusInternalServerError).SendString("Internal Server Error")
+		},
+	},
+	))
 
 	return s
 }

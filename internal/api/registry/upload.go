@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/elastic-io/haven/internal/log"
+	"github.com/elastic-io/haven/internal/types"
 )
 
 // UploadData 结构，支持流式处理
@@ -22,9 +23,9 @@ type UploadData struct {
 
 func NewUploadData() (*UploadData, error) {
 	return &UploadData{
-		memoryData: make([]byte, 0, 10*1024*1024), // 初始分配10MB内存
+		memoryData: make([]byte, 0, 10*types.MB), // 初始分配10MB内存
 		useMemory:  true,
-		maxMemSize: 50 * 1024 * 1024, // 50MB以下使用内存，超过则使用临时文件
+		maxMemSize: 50 * types.MB, // 50MB以下使用内存，超过则使用临时文件
 	}, nil
 }
 

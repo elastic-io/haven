@@ -12,6 +12,7 @@ import (
 type Options struct {
 	RepoId   string
 	DataDir  string
+	Tmpdir   string
 	Backend  string
 	BodySize string
 	Config   *config.Config
@@ -20,6 +21,7 @@ type Options struct {
 func New(ctx *cli.Context) *Options {
 	opts := Options{RepoId: ctx.Args().First()}
 	opts.DataDir = ctx.String("data")
+	opts.Tmpdir = ctx.GlobalString("tmp")
 	opts.Backend = ctx.GlobalString("backend")
 	opts.BodySize = ctx.GlobalString("body")
 
@@ -42,6 +44,9 @@ func (o *Options) Validate() error {
 	}
 	if o.DataDir == "" {
 		return fmt.Errorf("data directory is required")
+	}
+	if o.Tmpdir == "" {
+		return fmt.Errorf("tmp directory is required")
 	}
 	if o.Backend == "" {
 		log.Logger.Warn("backend is not set, using default backend")

@@ -63,8 +63,8 @@ func Execute(name, usage, version, commit string) {
 			Usage: "set the body size",
 		},
 		cli.StringFlag{
-			Name:   "tmpdir, t",
-			Value:  "./tmp",
+			Name:  "tmp, t",
+			Value: "./tmp",
 			Usage: "set the tmp directory",
 		},
 	}
@@ -90,7 +90,7 @@ func Execute(name, usage, version, commit string) {
 			}
 		}
 		log.Init(ctx.String("log"), ctx.String("log-level"))
-		os.Setenv("TMPDIR", ctx.String("tmpdir"))
+		os.Setenv("TMPDIR", ctx.String("tmp"))
 		return nil
 	}
 

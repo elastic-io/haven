@@ -21,6 +21,11 @@ func New(opts *options.Options) (*App, error) {
 	app := &App{opts: opts}
 	app.dbname = "repo.db"
 
+	if err := os.MkdirAll(opts.Tmpdir, 0755); err != nil {
+		return nil, fmt.Errorf(
+			"failed to create temporary directory: %w", err)
+	}
+
 	if err := os.MkdirAll(opts.DataDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create data directory: %w", err)
 	}
