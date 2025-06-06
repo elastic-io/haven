@@ -210,42 +210,6 @@ func (r *RegistryAPI) handlePushManifest(c *fiber.Ctx) error {
 	return c.SendStatus(fiber.StatusCreated)
 }
 
-// 处理Blob分块上传 (PATCH 请求)
-/*
-func (r *RegistryAPI) handleBlobUploadPatch(c *fiber.Ctx) error {
-	// 从中间件中获取仓库名称和UUID
-	repository := c.Locals("repository").(string)
-	uuid := c.Locals("uuid").(string)
-
-	log.Logger.Info("Patch blob: ", repository, " uuid: ", uuid)
-
-	// 获取上传数据对象
-	uploadData := getOrCreateUploadData(repository, uuid)
-
-	// 检查是否为流式请求
-	if c.Request().IsBodyStream() {
-		log.Logger.Info("Processing streaming request for blob patch")
-		// 使用流式处理
-		if err := uploadData.AppendStream(c.Request().BodyStream()); err != nil {
-			log.Logger.Error("Failed to append stream data: ", err)
-			return c.Status(fiber.StatusInternalServerError).SendString("Failed to process upload data")
-		}
-	} else {
-		// 追加数据块
-		if err := uploadData.AppendData(c.Body()); err != nil {
-			log.Logger.Error("Failed to append data: ", err)
-			return c.Status(fiber.StatusInternalServerError).SendString("Failed to process upload data")
-		}
-	}
-
-	// 设置响应头
-	c.Set("Range", fmt.Sprintf("0-%d", uploadData.Size()-1))
-	c.Set("Docker-Upload-UUID", uuid)
-	c.Set("Location", fmt.Sprintf("/v2/%s/blobs/uploads/%s", repository, uuid))
-	return c.SendStatus(fiber.StatusAccepted)
-}
-*/
-
 // 在 handleBlobUploadPatch 方法中添加错误处理
 func (r *RegistryAPI) handleBlobUploadPatch(c *fiber.Ctx) error {
 	// 从中间件中获取仓库名称和UUID
