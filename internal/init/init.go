@@ -1,8 +1,11 @@
 package init
 
 import (
-	"github.com/elastic-io/haven/internal/types"
 	"runtime/debug"
+	"time"
+
+	"github.com/elastic-io/haven/internal/log"
+	"github.com/elastic-io/haven/internal/types"
 )
 
 func init() {
