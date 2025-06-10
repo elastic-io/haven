@@ -1,6 +1,11 @@
 package types
 
-import "time"
+import (
+	"bytes"
+	"encoding/json"
+	"os"
+	"time"
+)
 
 //go:generate easyjson -all spec.go
 type UID string
@@ -92,8 +97,38 @@ type Artifact struct {
 
 //go:generate easyjson -all spec.go
 type ArtifactSpec struct {
+	Dir   string
+	Files []FileInfo
 }
 
 //go:generate easyjson -all spec.go
 type ArtifactStatus struct {
+	Tag struct {
+		Current string
+		History []string
+	}
+}
+
+type FileInfo struct {
+	ID         uint64
+	Name       string
+	Size       int64
+	MD5        string
+	ModifyTime time.Duration
+	Err        error
+}
+
+func (r *Artifact) SavePrettyJSON(filename string) error {
+	data, err := r.MarshalJSON()
+	if err != nil {
+		return err
+	}
+
+	var prettyJSON bytes.Buffer
+	err = json.Indent(&prettyJSON, data, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	return os.WriteFile(filename, prettyJSON.Bytes(), 0o666)
 }

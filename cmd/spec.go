@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/elastic-io/haven/internal/types"
+	"github.com/elastic-io/haven/internal/utils"
 	"github.com/urfave/cli"
 )
 
@@ -63,11 +64,7 @@ var specCommand = cli.Command{
 		if err := checkNoFile(specConfig); err != nil {
 			return err
 		}
-		data, err := spec.MarshalJSON()
-		if err != nil {
-			return err
-		}
-		return os.WriteFile(specConfig, data, 0o666)
+		return spec.SavePrettyJSON(specConfig)
 	},
 }
 
@@ -80,6 +77,7 @@ func artifact(kind, name, ns string) *types.Artifact {
 		ObjectMeta: types.ObjectMeta{
 			Name:              name,
 			Namespace:         ns,
+			UID:               types.UID(utils.UID(utils.HEX, 12)),
 			CreationTimestamp: time.Now(),
 			Annotations: map[string]string{
 				types.AK:     "dummy-ak",

@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"os"
 	"runtime"
+	"runtime/debug"
 	"strings"
 
 	_ "github.com/elastic-io/haven/internal"
 	"github.com/elastic-io/haven/internal/log"
+	"github.com/elastic-io/haven/internal/utils"
 	"github.com/urfave/cli"
 )
 
@@ -33,6 +35,12 @@ func Execute(name, usage, version, commit string) {
 	}
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
+			Name:   "endpoint, e",
+			Value:  "localhost:1986",
+			Usage:  "Artifactory repository server address",
+			EnvVar: "REPO_ENDPOINT",
+		},
+		cli.StringFlag{
 			Name:  "log",
 			Value: "",
 			Usage: "set the log file to write haven logs to (default is '/dev/stderr')",
@@ -52,30 +60,39 @@ func Execute(name, usage, version, commit string) {
 			Value: "bolt",
 			Usage: "backend storage type",
 		},
-		cli.StringSliceFlag{
-			Name:  "mod",
-			Value: &cli.StringSlice{"registry", "s3"},
-			Usage: "set the module to load",
-		},
 		cli.StringFlag{
 			Name:  "body",
 			Value: "256M",
 			Usage: "set the body size",
 		},
 		cli.StringFlag{
-			Name:  "tmp, t",
+			Name:  "tmp",
 			Value: "./tmp",
 			Usage: "set the tmp directory",
+		},
+		cli.IntFlag{
+			Name:  "gc-percent",
+			Value: 30,
+			Usage: "set the garbage collection percent",
+		},
+		cli.StringFlag{
+			Name:  "memory-limit",
+			Value: "4G",
+			Usage: "set the memory limit",
+		},
+		cli.BoolFlag{
+			Name:  "secure",
+			Usage: "set the secure flag",
 		},
 	}
 
 	app.Commands = []cli.Command{
-		startCommand,
-		runCommand,
-		killCommand,
-		deleteCommand,
-		listCommand,
+		pushCommand,
+		pullCommand,
+		sourceCommand,
+		sinkCommand,
 		stateCommand,
+		specCommand,
 	}
 
 	app.Before = func(ctx *cli.Context) error {
@@ -91,6 +108,9 @@ func Execute(name, usage, version, commit string) {
 		}
 		log.Init(ctx.String("log"), ctx.String("log-level"))
 		os.Setenv("TMPDIR", ctx.String("tmp"))
+
+		debug.SetGCPercent(ctx.Int("gc-percent"))
+		debug.SetMemoryLimit(int64(utils.MustParseSize(ctx.String("memory-limit"))))
 		return nil
 	}
 

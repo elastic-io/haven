@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	"net"
 	"runtime/debug"
 	"sync"
 	"time"
@@ -22,7 +21,7 @@ import (
 )
 
 type API interface {
-	Init(*config.Config)
+	Init(*config.SourceConfig)
 	RegisterRoutes(*fiber.App)
 }
 
@@ -39,15 +38,15 @@ func APIRegister(name string, api API) {
 }
 
 type Server struct {
-	config *config.Config
+	config *config.SourceConfig
 	router *fiber.App
 	apis   []API
 	server *fasthttp.Server
 }
 
-func New(c *config.Config) *Server {
+func New(c *config.SourceConfig) *Server {
 	app := fiber.New(fiber.Config{
-		BodyLimit:                    c.BodyLimit,
+		BodyLimit:                    c.BodySize,
 		DisableStartupMessage:        true,
 		StrictRouting:                true,
 		CaseSensitive:                true,
@@ -55,13 +54,16 @@ func New(c *config.Config) *Server {
 		ReadTimeout:                  time.Duration(c.ReadTimeout) * time.Second,
 		WriteTimeout:                 time.Duration(c.WriteTimeout) * time.Second,
 		IdleTimeout:                  time.Duration(c.IdleTimeout) * time.Second,
-		ReduceMemoryUsage:            true,
+		ReduceMemoryUsage:            false,
 		DisablePreParseMultipartForm: true,
-		ReadBufferSize:               32 * types.KB,
+		ReadBufferSize:               32 * types.KB, // 减小缓冲区
 		WriteBufferSize:              32 * types.KB,
 		DisableKeepalive:             false,
-		Concurrency:                  256 * 1024,
-		ServerHeader:                 "Haven Server",
+		Concurrency:                  256 * types.KB,
+		ServerHeader:                 "Haven Fiber Server",
+		Network:                      "tcp",
+		EnableTrustedProxyCheck:      false,
+		TrustedProxies:               []string{},
 		ErrorHandler: func(c *fiber.Ctx, err error) error {
 			code := fiber.StatusInternalServerError
 			if e, ok := err.(*fiber.Error); ok {
@@ -92,41 +94,66 @@ func New(c *config.Config) *Server {
 	}))
 	app.Use(loggingMiddleware())
 
-	// 添加监控端点
 	app.Get("/metrics", monitor.New())
 
-	s := &Server{
-		config: c,
-		router: app,
-	}
+	return &Server{config: c, router: app}
+}
 
-	// 创建自定义的 fasthttp 服务器
-	s.server = &fasthttp.Server{
+// 修改Serve方法，使用自定义的fasthttp服务器
+func (s *Server) Serve() error {
+	s.addGlobalErrorRecovery()
+
+	log.Logger.Info("Starting server on ", s.config.Endpoint)
+
+	// 创建自定义的fasthttp服务器
+	server := &fasthttp.Server{
 		Handler:               s.router.Handler(),
-		Name:                  "Haven Custom Server",
-		ReadTimeout:           time.Duration(c.ReadTimeout) * time.Second,
-		WriteTimeout:          time.Duration(c.WriteTimeout) * time.Second,
-		IdleTimeout:           time.Duration(c.IdleTimeout) * time.Second,
-		MaxRequestBodySize:    c.BodyLimit,
+		Name:                  "Haven Fasthttp Server",
+		ReadTimeout:           time.Duration(s.config.ReadTimeout) * time.Second,
+		WriteTimeout:          time.Duration(s.config.WriteTimeout) * time.Second,
+		IdleTimeout:           time.Duration(s.config.IdleTimeout) * time.Second,
+		MaxRequestBodySize:    s.config.BodySize,
 		NoDefaultServerHeader: true,
-		MaxConnsPerIP:         100,
-		MaxRequestsPerConn:    1000,
-		ReduceMemoryUsage:     true,
+		MaxConnsPerIP:         50,   // 降低连接数限制
+		MaxRequestsPerConn:    500,  // 降低请求数限制
+		ReduceMemoryUsage:     true, // 启用内存优化
 		TCPKeepalive:          true,
-		TCPKeepalivePeriod:    time.Minute,
+		TCPKeepalivePeriod:    30 * time.Second, // 缩短keepalive时间
 		DisableKeepalive:      false,
-		// 自定义连接处理，添加panic恢复
-		ConnState: func(conn net.Conn, state fasthttp.ConnState) {
-			defer func() {
-				if r := recover(); r != nil {
-					log.Logger.Errorf("Recovered from connection panic: %v\n%s", r, debug.Stack())
-					conn.Close()
-				}
-			}()
+		ReadBufferSize:        16 * types.KB, // 进一步减小缓冲区
+		WriteBufferSize:       16 * types.KB,
+		// 添加更严格的限制
+		MaxKeepaliveDuration: 60 * time.Second,
+		// 自定义错误处理
+		ErrorHandler: func(ctx *fasthttp.RequestCtx, err error) {
+			log.Logger.Errorf("FastHTTP Error: %v, RemoteAddr: %s", err, ctx.RemoteAddr())
+			ctx.Error("Bad Request", fasthttp.StatusBadRequest)
 		},
 	}
 
-	return s
+	// 包装handler以捕获panic
+	originalHandler := server.Handler
+	server.Handler = func(ctx *fasthttp.RequestCtx) {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Logger.Errorf("Recovered from fasthttp panic: %v\n%s", r, debug.Stack())
+				if !ctx.Response.ConnectionClose() {
+					ctx.Error("Internal Server Error", fasthttp.StatusInternalServerError)
+				}
+			}
+		}()
+		originalHandler(ctx)
+	}
+
+	s.server = server
+
+	if s.config.CertFile != "" && s.config.KeyFile != "" {
+		log.Logger.Info("Using HTTPS with certificate: ", s.config.CertFile, " and key: ", s.config.KeyFile)
+		return server.ListenAndServeTLS(s.config.Endpoint, s.config.CertFile, s.config.KeyFile)
+	}
+
+	log.Logger.Warn("WARNING: Using insecure HTTP mode")
+	return server.ListenAndServe(s.config.Endpoint)
 }
 
 func (s *Server) Init() error {
@@ -148,16 +175,18 @@ func (s *Server) Init() error {
 	return nil
 }
 
-func (s *Server) Serve() error {
-	log.Logger.Info("Starting server on ", s.config.Endpoint)
-
-	if s.config.CertFile != "" && s.config.KeyFile != "" {
-		log.Logger.Info("Using HTTPS with certificate: ", s.config.CertFile, " and key: ", s.config.KeyFile)
-		return s.router.ListenTLS(s.config.Endpoint, s.config.CertFile, s.config.KeyFile)
-	}
-
-	log.Logger.Warn("WARNING: Using insecure HTTP mode")
-	return s.router.Listen(s.config.Endpoint)
+func (s *Server) addGlobalErrorRecovery() {
+	s.router.Use(func(c *fiber.Ctx) error {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Logger.Errorf("Global panic recovery: %v\n%s", r, debug.Stack())
+				c.Status(fiber.StatusInternalServerError).JSON(fiber.Map{
+					"error": "Internal Server Error",
+				})
+			}
+		}()
+		return c.Next()
+	})
 }
 
 func (s *Server) Done() error {

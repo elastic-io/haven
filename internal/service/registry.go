@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"time"
 
@@ -59,7 +58,7 @@ func NewRegistryService(storage storage.Storage) (*registryService, error) {
 	return &registryService{storage: storage}, nil
 }
 
-func (r *registryService) Init(c *config.Config) error {
+func (r *registryService) Init(c *config.SourceConfig) error {
 	var err error
 
 	mml := len(c.MaxMultipart)
@@ -584,6 +583,8 @@ func (r *registryService) GetManifestReferences(blobDigest string) ([]string, er
 // PutBlobFromReader 从读取器流式存储blob
 func (r *registryService) PutBlobFromReader(repository, digest string, reader io.Reader, size int64) error {
 	log.Logger.Info("Registry: Putting blob ", digest, " for repository ", repository, " size: ", size, " bytes")
+	log.Logger.Debugf("[Service] Starting blob storage - repo: %s, digest: %s, size: %d bytes",
+		repository, digest, size)
 
 	// 确保registry桶存在
 	exists, err := r.storage.BucketExists(registryBucket)
@@ -602,13 +603,16 @@ func (r *registryService) PutBlobFromReader(repository, digest string, reader io
 
 	// 对于小文件，直接使用PutObject
 	if size < int64(r.multipartThreshold) {
-		log.Logger.Info("Using direct upload for small blob: ", digest)
+		log.Logger.Debugf("[Service] Using direct upload for small blob: %s (threshold: %d bytes)",
+			digest, r.multipartThreshold)
 
-		// 读取所有数据
+		readStart := time.Now()
 		data, err := io.ReadAll(reader)
 		if err != nil {
 			return fmt.Errorf("failed to read data: %w", err)
 		}
+		readTime := time.Since(readStart)
+		log.Logger.Debugf("[Service] Read data in %v", readTime)
 
 		blobObject := &types.S3ObjectData{
 			Key:          key,
@@ -619,44 +623,50 @@ func (r *registryService) PutBlobFromReader(repository, digest string, reader io
 			Metadata:     nil,
 		}
 
-		return r.storage.PutObject(registryBucket, blobObject)
+		storeStart := time.Now()
+		err = r.storage.PutObject(registryBucket, blobObject)
+		storeTime := time.Since(storeStart)
+
+		if err != nil {
+			log.Logger.Errorf("[Service] Direct upload failed after %v: %v", storeTime, err)
+			return err
+		}
+
+		log.Logger.Debugf("[Service] Direct upload completed in %v", storeTime)
+		return nil
 	}
 
 	// 对于大文件，使用分块上传
-	log.Logger.Info("Using chunked upload for large blob: ", digest)
+	log.Logger.Debugf("[Service] Using chunked upload for large blob: %s (size: %d bytes, threshold: %d bytes)",
+		digest, size, r.multipartThreshold)
 	return r.chunkedStreamUpload(registryBucket, key, reader, size, digest)
 }
 
 // chunkedStreamUpload 使用分块方式流式上传
 func (r *registryService) chunkedStreamUpload(bucket, key string, reader io.Reader, size int64, digest string) error {
-	log.Logger.Info("Using chunked stream upload for blob: ", digest)
+	log.Logger.Info("Using chunked upload for large blob: ", digest)
+	log.Logger.Debugf("[Storage] Starting chunked stream upload for blob: %s, size: %d bytes", digest, size)
 
-	// 计算总块数
 	totalChunks := (size + int64(r.chunkLength) - 1) / int64(r.chunkLength)
-	log.Logger.Info("Total chunks: ", totalChunks, " for blob ", digest)
+	log.Logger.Debugf("[Storage] Total chunks: %d, chunk size: %d bytes", totalChunks, r.chunkLength)
 
-	// 创建临时目录存储分块
-	tempDir, err := os.MkdirTemp("", "blob-chunks-*")
-	if err != nil {
-		return fmt.Errorf("failed to create temp directory: %w", err)
-	}
-	defer os.RemoveAll(tempDir)
-
-	// 读取和上传分块
+	uploadStart := time.Now()
 	buffer := make([]byte, r.chunkLength)
+
 	for i := int64(0); i < totalChunks; i++ {
+		chunkStart := time.Now()
+
 		// 读取一个块
 		bytesRead, err := io.ReadFull(reader, buffer)
 		if err != nil && err != io.EOF && err != io.ErrUnexpectedEOF {
+			log.Logger.Errorf("[Storage] Failed to read chunk %d: %v", i+1, err)
 			return fmt.Errorf("failed to read chunk %d: %w", i+1, err)
 		}
 
-		// 如果是最后一块，可能不满
 		chunkData := buffer[:bytesRead]
 		chunkKey := fmt.Sprintf("%s.part%d", key, i)
 
-		log.Logger.Info("Uploading chunk ", i+1, " of ", totalChunks, " for blob ", digest, " (size: ", len(chunkData), " bytes)")
-
+		// 上传块
 		chunkObject := &types.S3ObjectData{
 			Key:          chunkKey,
 			Data:         chunkData,
@@ -667,6 +677,7 @@ func (r *registryService) chunkedStreamUpload(bucket, key string, reader io.Read
 		}
 
 		if err := r.storage.PutObject(bucket, chunkObject); err != nil {
+			log.Logger.Errorf("[Storage] Failed to upload chunk %d: %v", i+1, err)
 			// 清理已上传的块
 			for j := int64(0); j < i; j++ {
 				cleanupKey := fmt.Sprintf("%s.part%d", key, j)
@@ -674,9 +685,20 @@ func (r *registryService) chunkedStreamUpload(bucket, key string, reader io.Read
 			}
 			return fmt.Errorf("failed to upload chunk %d: %w", i+1, err)
 		}
+
+		chunkTime := time.Since(chunkStart)
+		chunkSpeed := float64(len(chunkData)) / types.MB / chunkTime.Seconds()
+
+		log.Logger.Debugf("[Storage] Uploaded chunk %d/%d: %d bytes in %v, speed: %.2f MB/s",
+			i+1, totalChunks, len(chunkData), chunkTime, chunkSpeed)
+
+		// 每10个chunk记录一次info级别的进度
+		if (i+1)%10 == 0 || i+1 == totalChunks {
+			log.Logger.Infof("Uploading chunk %d/%d for blob %s", i+1, totalChunks, digest)
+		}
 	}
 
-	// 创建一个清单文件，记录所有块
+	// 创建清单文件
 	mm := &types.MultiManifest{
 		TotalChunks: int(totalChunks),
 		Digest:      digest,
@@ -718,7 +740,14 @@ func (r *registryService) chunkedStreamUpload(bucket, key string, reader io.Read
 		return fmt.Errorf("failed to create main object: %w", err)
 	}
 
-	log.Logger.Info("Successfully uploaded blob ", digest, " using chunked stream upload")
+	totalTime := time.Since(uploadStart)
+	overallSpeed := float64(size) / types.MB / totalTime.Seconds()
+
+	log.Logger.Infof("Successfully uploaded blob %s using chunked upload: %d bytes in %v",
+		digest, size, totalTime)
+	log.Logger.Debugf("[Storage] Chunked upload completed for blob %s: %d bytes in %v, overall speed: %.2f MB/s",
+		digest, size, totalTime, overallSpeed)
+
 	return nil
 }
 

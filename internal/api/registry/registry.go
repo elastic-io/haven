@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/elastic-io/haven/internal/service"
 	"github.com/elastic-io/haven/internal/types"
@@ -29,7 +30,7 @@ type RegistryAPI struct {
 	service         service.RegistryService
 }
 
-func (api *RegistryAPI) Init(c *config.Config) {
+func (api *RegistryAPI) Init(c *config.SourceConfig) {
 	service, err := service.NewRegistryService(c.Storage)
 	if err != nil {
 		panic(fmt.Errorf(err.Error()))
@@ -212,56 +213,120 @@ func (r *RegistryAPI) handlePushManifest(c *fiber.Ctx) error {
 
 // 在 handleBlobUploadPatch 方法中添加错误处理
 func (r *RegistryAPI) handleBlobUploadPatch(c *fiber.Ctx) error {
-	// 从中间件中获取仓库名称和UUID
+	startTime := time.Now()
 	repository := c.Locals("repository").(string)
 	uuid := c.Locals("uuid").(string)
 
+	contentLength := c.Request().Header.ContentLength()
+	if contentLength < 0 {
+		contentLength = 0
+	}
+
 	log.Logger.Info("Patch blob: ", repository, " uuid: ", uuid)
+	log.Logger.Debugf("[PATCH] Starting blob patch - repo: %s, uuid: %s, content-length: %d bytes",
+		repository, uuid, contentLength)
 
-	// 获取上传数据对象
 	uploadData := getOrCreateUploadData(repository, uuid)
+	if uploadData == nil {
+		log.Logger.Error("[PATCH] Failed to create upload data")
+		return c.Status(fiber.StatusInternalServerError).SendString("Failed to create upload data")
+	}
 
-	// 检查是否为流式请求
-	if c.Request().IsBodyStream() {
-		log.Logger.Info("Processing streaming request for blob patch")
+	initialSize := uploadData.Size()
+	log.Logger.Debugf("[PATCH] Current upload size before patch: %d bytes", initialSize)
 
-		// 使用安全的方式处理流
+	// 处理数据
+	if c.Request().IsBodyStream() && contentLength > 0 {
+		log.Logger.Debugf("[PATCH] Processing streaming request, size: %d bytes", contentLength)
+
 		bodyStream := c.Request().BodyStream()
 		if bodyStream == nil {
-			log.Logger.Error("Nil body stream received")
+			log.Logger.Error("[PATCH] Nil body stream received")
 			return c.Status(fiber.StatusBadRequest).SendString("Invalid request body")
 		}
 
-		// 包装读取器以捕获错误
-		safeReader := &safeReader{r: bodyStream}
+		maxBytes := int64(c.App().Config().BodyLimit)
+		safeReader := newSafeReader(bodyStream, maxBytes)
 
-		// 使用流式处理
-		if err := uploadData.AppendStream(safeReader); err != nil {
-			log.Logger.Error("Failed to append stream data: ", err)
+		// 添加进度监控
+		progressReader := &progressReader{
+			reader: safeReader,
+			onProgress: func(bytesRead int64) {
+				if bytesRead%types.MB == 0 { // 每1MB记录一次
+					log.Logger.Debugf("[PATCH] Stream progress: %d MB read", bytesRead/types.MB)
+				}
+			},
+		}
+
+		streamStart := time.Now()
+		if err := uploadData.AppendStream(progressReader); err != nil {
+			log.Logger.Error("[PATCH] Failed to append stream data after %v: %v",
+				time.Since(streamStart), err)
 			return c.Status(fiber.StatusInternalServerError).SendString("Failed to process upload data")
 		}
-	} else {
-		// 追加数据块
+		log.Logger.Debugf("[PATCH] Stream processing completed in %v", time.Since(streamStart))
+
+	} else if len(c.Body()) > 0 {
+		log.Logger.Debugf("[PATCH] Processing non-stream body, size: %d bytes", len(c.Body()))
+
+		bodyStart := time.Now()
 		if err := uploadData.AppendData(c.Body()); err != nil {
-			log.Logger.Error("Failed to append data: ", err)
+			log.Logger.Error("[PATCH] Failed to append data after %v: %v",
+				time.Since(bodyStart), err)
 			return c.Status(fiber.StatusInternalServerError).SendString("Failed to process upload data")
 		}
+		log.Logger.Debugf("[PATCH] Body processing completed in %v", time.Since(bodyStart))
 	}
 
+	finalSize := uploadData.Size()
+	bytesProcessed := finalSize - initialSize
+
+	log.Logger.Debugf("[PATCH] Patch completed - processed: %d bytes, total size: %d bytes, duration: %v, speed: %.2f MB/s",
+		bytesProcessed, finalSize, time.Since(startTime),
+		float64(bytesProcessed)/types.MB/time.Since(startTime).Seconds())
+
 	// 设置响应头
-	c.Set("Range", fmt.Sprintf("0-%d", uploadData.Size()-1))
+	if finalSize > 0 {
+		c.Set("Range", fmt.Sprintf("0-%d", finalSize-1))
+	} else {
+		c.Set("Range", "0-0")
+	}
 	c.Set("Docker-Upload-UUID", uuid)
 	c.Set("Location", fmt.Sprintf("/v2/%s/blobs/uploads/%s", repository, uuid))
+
 	return c.SendStatus(fiber.StatusAccepted)
 }
 
-// 添加一个安全的读取器包装器
+// 进度监控读取器
+type progressReader struct {
+	reader     io.Reader
+	bytesRead  int64
+	onProgress func(int64)
+}
+
+func (pr *progressReader) Read(p []byte) (n int, err error) {
+	n, err = pr.reader.Read(p)
+	pr.bytesRead += int64(n)
+	if pr.onProgress != nil {
+		pr.onProgress(pr.bytesRead)
+	}
+	return n, err
+}
+
+// 改进的安全读取器包装器
 type safeReader struct {
-	r io.Reader
+	r         io.Reader
+	maxBytes  int64
+	readBytes int64
 }
 
 func (sr *safeReader) Read(p []byte) (n int, err error) {
 	if sr.r == nil {
+		return 0, io.EOF
+	}
+
+	// 检查是否超过最大读取限制
+	if sr.maxBytes > 0 && sr.readBytes >= sr.maxBytes {
 		return 0, io.EOF
 	}
 
@@ -273,98 +338,173 @@ func (sr *safeReader) Read(p []byte) (n int, err error) {
 		}
 	}()
 
-	return sr.r.Read(p)
+	// 限制单次读取大小
+	if len(p) > 32*1024 { // 限制为32KB
+		p = p[:32*1024]
+	}
+
+	// 如果设置了最大字节限制，确保不超过剩余可读字节数
+	if sr.maxBytes > 0 {
+		remaining := sr.maxBytes - sr.readBytes
+		if int64(len(p)) > remaining {
+			p = p[:remaining]
+		}
+	}
+
+	n, err = sr.r.Read(p)
+	sr.readBytes += int64(n)
+	return n, err
+}
+
+// 创建安全读取器的辅助函数
+func newSafeReader(r io.Reader, maxBytes int64) *safeReader {
+	return &safeReader{
+		r:         r,
+		maxBytes:  maxBytes,
+		readBytes: 0,
+	}
 }
 
 // 处理Blob推送
 func (r *RegistryAPI) handlePushBlob(c *fiber.Ctx) error {
-	// 从中间件中获取仓库名称和UUID
+	startTime := time.Now()
 	repository := c.Locals("repository").(string)
 	uuid := c.Locals("uuid").(string)
-
 	digest := c.Query("digest")
+
 	if digest == "" {
 		return c.Status(fiber.StatusBadRequest).SendString("Missing digest parameter")
 	}
 
 	log.Logger.Info("Push blob: ", repository, " uuid: ", uuid, " digest: ", digest)
+	log.Logger.Debugf("[PUT] Starting blob push - repo: %s, uuid: %s, digest: %s",
+		repository, uuid, digest)
 
-	// 创建临时文件用于处理和验证数据
+	// 创建临时文件
 	tempFile, err := os.CreateTemp("", "blob-*")
 	if err != nil {
-		log.Logger.Error("Failed to create temp file: ", err)
+		log.Logger.Errorf("[PUT] Failed to create temp file: %v", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to create temp file")
 	}
 	tempPath := tempFile.Name()
-	defer os.Remove(tempPath)
-	defer tempFile.Close()
+	defer func() {
+		tempFile.Close()
+		os.Remove(tempPath)
+		log.Logger.Debugf("[PUT] Cleaned up temp file: %s", tempPath)
+	}()
 
-	// 创建哈希计算器
 	hasher := sha256.New()
 	multiWriter := io.MultiWriter(tempFile, hasher)
 
+	var totalBytes int64
+	contentLength := c.Request().Header.ContentLength()
+
 	// 处理请求体或上传数据
-	if c.Request().Header.ContentLength() > 0 {
-		// 有请求体
+	if contentLength > 0 {
+		log.Logger.Debugf("[PUT] Processing request body, content-length: %d bytes", contentLength)
+
 		if c.Request().IsBodyStream() {
-			// 流式处理
-			log.Logger.Info("Processing streaming request body")
-			if _, err := io.Copy(multiWriter, c.Request().BodyStream()); err != nil {
-				log.Logger.Error("Failed to process request stream: ", err)
+			log.Logger.Debug("[PUT] Processing streaming request body")
+
+			maxBytes := int64(c.App().Config().BodyLimit)
+			safeReader := newSafeReader(c.Request().BodyStream(), maxBytes)
+
+			// 添加进度监控
+			progressReader := &progressReader{
+				reader: safeReader,
+				onProgress: func(bytesRead int64) {
+					if bytesRead%(10*types.MB) == 0 { // 每10MB记录一次
+						log.Logger.Debugf("[PUT] Processing progress: %d MB", bytesRead/types.MB)
+					}
+				},
+			}
+
+			copyStart := time.Now()
+			written, err := io.Copy(multiWriter, progressReader)
+			if err != nil {
+				log.Logger.Errorf("[PUT] Failed to process request stream after %v: %v",
+					time.Since(copyStart), err)
 				return c.Status(fiber.StatusInternalServerError).SendString("Failed to process request body")
 			}
+			totalBytes = written
+			log.Logger.Debugf("[PUT] Stream copy completed: %d bytes in %v, speed: %.2f MB/s",
+				written, time.Since(copyStart), float64(written)/types.MB/time.Since(copyStart).Seconds())
 		} else {
-			// 非流式处理，但直接写入文件而不是加载到内存
-			if _, err := multiWriter.Write(c.Body()); err != nil {
-				log.Logger.Error("Failed to write request body: ", err)
+			writeStart := time.Now()
+			bodyData := c.Body()
+			if _, err := multiWriter.Write(bodyData); err != nil {
+				log.Logger.Errorf("[PUT] Failed to write request body: %v", err)
 				return c.Status(fiber.StatusInternalServerError).SendString("Failed to process request body")
 			}
+			totalBytes = int64(len(bodyData))
+			log.Logger.Debugf("[PUT] Body write completed: %d bytes in %v",
+				totalBytes, time.Since(writeStart))
 		}
 	} else {
-		// 从临时存储获取之前通过PATCH上传的数据
+		log.Logger.Debug("[PUT] Processing upload data from PATCH requests")
+
 		uploadData := getUploadData(repository, uuid)
 		if uploadData == nil {
+			log.Logger.Error("[PUT] No upload data found")
 			return c.Status(fiber.StatusNotFound).SendString("No upload data found")
 		}
 
-		// 流式写入临时文件和哈希计算器
+		uploadSize := uploadData.Size()
+		log.Logger.Debugf("[PUT] Upload data size: %d bytes", uploadSize)
+
+		writeStart := time.Now()
 		if err := uploadData.WriteTo(multiWriter); err != nil {
-			log.Logger.Error("Failed to process upload data: ", err)
+			log.Logger.Errorf("[PUT] Failed to process upload data after %v: %v",
+				time.Since(writeStart), err)
 			return c.Status(fiber.StatusInternalServerError).SendString("Failed to process upload data")
 		}
+		totalBytes = uploadSize
+		log.Logger.Debugf("[PUT] Upload data write completed: %d bytes in %v, speed: %.2f MB/s",
+			totalBytes, time.Since(writeStart), float64(totalBytes)/types.MB/time.Since(writeStart).Seconds())
 
-		// 清理临时数据
 		removeUploadData(repository, uuid)
+		log.Logger.Debug("[PUT] Cleaned up upload data")
 	}
-
-	// 计算摘要
-	calculatedDigest := "sha256:" + hex.EncodeToString(hasher.Sum(nil))
 
 	// 验证摘要
+	calculatedDigest := "sha256:" + hex.EncodeToString(hasher.Sum(nil))
 	if digest != calculatedDigest {
-		log.Logger.Warn("Digest mismatch: expected ", digest, " but got ", calculatedDigest)
+		log.Logger.Warnf("[PUT] Digest mismatch: expected %s but got %s", digest, calculatedDigest)
 		return c.Status(fiber.StatusBadRequest).SendString("Digest mismatch")
 	}
+	log.Logger.Debugf("[PUT] Digest verification passed: %s", digest)
 
-	// 重置文件指针
+	// 重置文件指针并获取文件信息
 	if _, err := tempFile.Seek(0, 0); err != nil {
-		log.Logger.Error("Failed to reset file pointer: ", err)
+		log.Logger.Errorf("[PUT] Failed to reset file pointer: %v", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to process data")
 	}
 
-	// 获取文件大小
 	fileInfo, err := tempFile.Stat()
 	if err != nil {
-		log.Logger.Error("Failed to get file info: ", err)
+		log.Logger.Errorf("[PUT] Failed to get file info: %v", err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to process data")
 	}
 	fileSize := fileInfo.Size()
 
-	// 使用流式方法存储blob
+	// 存储blob
+	log.Logger.Debugf("[PUT] Starting blob storage: %d bytes", fileSize)
+	storeStart := time.Now()
+
 	if err := r.service.PutBlobFromReader(repository, digest, tempFile, fileSize); err != nil {
-		log.Logger.Error("Failed to store blob: ", err)
+		log.Logger.Errorf("[PUT] Failed to store blob after %v: %v",
+			time.Since(storeStart), err)
 		return c.Status(fiber.StatusInternalServerError).SendString("Failed to store blob")
 	}
+
+	storeTime := time.Since(storeStart)
+	totalTime := time.Since(startTime)
+
+	log.Logger.Infof("Successfully stored blob %s: %d bytes in %v", digest, fileSize, totalTime)
+	log.Logger.Debugf("[PUT] Blob push completed - total: %d bytes, store time: %v, total time: %v, store speed: %.2f MB/s, overall speed: %.2f MB/s",
+		fileSize, storeTime, totalTime,
+		float64(fileSize)/types.MB/storeTime.Seconds(),
+		float64(fileSize)/types.MB/totalTime.Seconds())
 
 	c.Set("Docker-Content-Digest", digest)
 	c.Set("Location", fmt.Sprintf("/v2/%s/blobs/%s", repository, digest))

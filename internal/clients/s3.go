@@ -3,6 +3,7 @@ package clients
 import (
 	"bytes"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -14,6 +15,10 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+)
+
+var (
+	ErrS3KeyNotFound = errors.New("key not found")
 )
 
 type S3Client interface {
@@ -135,6 +140,9 @@ func (s *s3Client) DownloadObject(bucket, objectKey string) ([]byte, error) {
 	}
 	_, err := downloader.Download(buffer, input)
 	if err != nil {
+		if strings.Contains(err.Error(), s3.ErrCodeNoSuchKey) || buffer.Bytes() == nil {
+			return nil, ErrS3KeyNotFound
+		}
 		return nil, err
 	}
 	return buffer.Bytes(), nil

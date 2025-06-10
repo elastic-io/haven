@@ -52,7 +52,7 @@ type CommonPrefixes struct {
 	Prefix string `xml:"Prefix"`
 }
 
-func (api *S3API) Init(c *config.Config) {
+func (api *S3API) Init(c *config.SourceConfig) {
 	var err error
 	api.service, err = service.NewS3Service(c.Storage)
 	if err != nil {

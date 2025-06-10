@@ -1,60 +1,85 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"os"
-	"path/filepath"
+	"os/signal"
+	"syscall"
+	"time"
 
-	"github.com/elastic-io/haven/internal/api"
+	_ "github.com/elastic-io/haven/internal"
+	"github.com/elastic-io/haven/internal/log"
 	"github.com/elastic-io/haven/internal/options"
-	"github.com/elastic-io/haven/internal/storage"
+	"github.com/elastic-io/haven/internal/utils"
+	"github.com/urfave/cli"
 )
 
-type App struct {
-	opts    *options.Options
-	dbname  string
-	storage storage.Storage
-	server  *api.Server
+type App interface {
+	Run() error
+	Stop() error
 }
 
-func New(opts *options.Options) (*App, error) {
-	app := &App{opts: opts}
-	app.dbname = "repo.db"
-
-	if err := os.MkdirAll(opts.Tmpdir, 0755); err != nil {
-		return nil, fmt.Errorf(
-			"failed to create temporary directory: %w", err)
+func Main(ctx *cli.Context, program func(opts *options.Options) (App, error), appname string) error {
+	opts := options.New(ctx)
+	if err := opts.Validate(); err != nil {
+		return fmt.Errorf("invalid options: %w", err)
 	}
 
-	if err := os.MkdirAll(opts.DataDir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create data directory: %w", err)
-	}
-	dbPath := filepath.Join(opts.DataDir, fmt.Sprintf("%s-%s", opts.RepoId, app.dbname))
-
-	var err error
-	app.storage, err = storage.NewStorage(opts.Backend, dbPath)
+	app, err := program(opts)
 	if err != nil {
-		return nil, fmt.Errorf("failed to initialize storage: %w", err)
-	}
-	opts.Config.Storage = app.storage
-	return app, opts.Config.Validate()
-}
-
-func (a *App) Run() error {
-	server := api.New(a.opts.Config)
-	if err := server.Init(); err != nil {
 		return err
 	}
-	a.server = server
-	return server.Serve()
-}
 
-func (a *App) Stop() error {
-	if a.storage != nil {
-		a.storage.Close()
+	signalCh := make(chan os.Signal, 1)
+	signal.Notify(signalCh, syscall.SIGINT, syscall.SIGTERM, syscall.SIGHUP)
+
+	errCh := make(chan error, 1)
+
+	utils.SafeGo(func() {
+		if err := app.Run(); err != nil {
+			errCh <- err
+		}
+		close(errCh)
+	})
+
+	log.Logger.Infof("%s startup successfully", appname)
+
+	select {
+	case receivedSignal := <-signalCh:
+		log.Logger.Debug("Received signal: ", receivedSignal, ", initiating graceful shutdown...")
+	case err = <-errCh:
+		if err != nil {
+			log.Logger.Debug(appname, " error: ", err.Error(), ", shutting down...")
+		} else {
+			log.Logger.Debug(appname, " completed successfully, shutting down...")
+		}
 	}
-	if a.server != nil {
-		a.server.Done()
+
+	log.Logger.Infof("Stopping %s...", appname)
+	stopCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	stopErrCh := make(chan error, 1)
+	utils.SafeGo(func() {
+		stopErrCh <- app.Stop()
+		close(stopErrCh)
+	})
+
+	select {
+	case stopErr := <-stopErrCh:
+		if stopErr != nil {
+			log.Logger.Debug("Error during shutdown: ", stopErr)
+			if err == nil {
+				err = stopErr
+			}
+		}
+	case <-stopCtx.Done():
+		log.Logger.Debug("Shutdown timed out")
+		if err == nil {
+			err = stopCtx.Err()
+		}
 	}
-	return nil
+	log.Logger.Debug(appname, " shutdown complete")
+	return err
 }
