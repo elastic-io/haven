@@ -92,7 +92,6 @@ func Execute(name, usage, version, commit string) {
 		sourceCommand,
 		sinkCommand,
 		stateCommand,
-		specCommand,
 	}
 
 	app.Before = func(ctx *cli.Context) error {

@@ -19,6 +19,7 @@ type SourceConfig struct {
 	CertFile     string
 	KeyFile      string
 	MaxMultipart string
+	DataDir	     string
 	ChunkLength  string
 	ReadTimeout  int
 	WriteTimeout int
@@ -37,6 +38,7 @@ func NewSource(opts *options.Options) *SourceConfig {
 	c.CertFile = opts.Ctx.String("cert")
 	c.KeyFile = opts.Ctx.String("key")
 	c.MaxMultipart = opts.Ctx.String("max-multipart")
+	c.DataDir = opts.Ctx.String("data")
 	c.ChunkLength = opts.Ctx.String("chunk-length")
 	c.ReadTimeout = opts.Ctx.Int("read-timeout")
 	c.WriteTimeout = opts.Ctx.Int("write-timeout")
@@ -58,6 +60,9 @@ func (c *SourceConfig) Validate() error {
 	if c.Storage == nil {
 		return fmt.Errorf("storage is required")
 	}
+	if c.DataDir == "" {
+		return fmt.Errorf("data directory is required")
+	}
 	return nil
 }
 
@@ -76,19 +81,22 @@ func (c *SinkConfig) Validate() error {
 type PushConfig struct {
 	*options.Options
 
-	Endpoint string
-	Path     string
-	Tag      string
+	Kind         string
+	Namespace    string
+	Path         string
 	BigFileLimit int
 	ExcludeFiles []string
-	ExcludeExts []string
+	ExcludeExts  []string
+	AK, SK       string
+	Token        string
+	Region       string
 }
 
 func NewPush(opts *options.Options) *PushConfig {
 	pc := &PushConfig{Options: opts}
-	pc.Endpoint = opts.Ctx.GlobalString("endpoint")
+	pc.Kind = opts.Ctx.String("kind")
+	pc.Namespace = opts.Ctx.String("namespace")
 	pc.Path = opts.Ctx.String("path")
-	pc.Tag = opts.Ctx.String("tag")
 	limit := opts.Ctx.String("limit")
 
 	size, err := utils.ParseSize(limit[0:len(limit)-1], limit[len(limit)-1:])
@@ -99,18 +107,25 @@ func NewPush(opts *options.Options) *PushConfig {
 
 	pc.ExcludeExts = opts.Ctx.StringSlice("exclude-exts")
 	pc.ExcludeFiles = opts.Ctx.StringSlice("exclude-files")
+	pc.AK = opts.Ctx.String("ak")
+	pc.SK = opts.Ctx.String("sk")
+	pc.Token = opts.Ctx.String("token")
+	pc.Region = opts.Ctx.String("region")
 	return nil
 }
 
 func (c *PushConfig) Validate() error {
-	if 0 == len(c.Endpoint) {
-		return fmt.Errorf("endpoint is required")
+	if len(c.Kind) <= 0 {
+		return fmt.Errorf("kind is required")
 	}
-	if 0 == len(c.Path) {
+	if len(c.Path) <= 0 {
 		return fmt.Errorf("path is required")
 	}
-	if 0 == len(c.Tag) {
-		return fmt.Errorf("tag is required")
+	if len(c.Namespace) <= 0 {
+		return fmt.Errorf("namespace is required")
+	}
+	if c.BigFileLimit == 0 {
+		return fmt.Errorf("big-file-limit is required")
 	}
 	return nil
 }

@@ -11,8 +11,7 @@ import (
 
 type Options struct {
 	Ctx         *cli.Context
-	RepoId      string
-	DataDir     string
+	Id          string
 	Tmpdir      string
 	Backend     string
 	Endpoint    string
@@ -24,9 +23,8 @@ type Options struct {
 
 func New(ctx *cli.Context) *Options {
 	opts := Options{Ctx: ctx}
-	opts.RepoId = ctx.Args().First()
+	opts.Id = ctx.Args().First()
 	opts.Endpoint = ctx.GlobalString("endpoint")
-	opts.DataDir = ctx.GlobalString("data")
 	opts.Tmpdir = ctx.GlobalString("tmp")
 	opts.Backend = ctx.GlobalString("backend")
 
@@ -44,11 +42,11 @@ func New(ctx *cli.Context) *Options {
 }
 
 func (o *Options) Validate() error {
-	if len(o.RepoId) == 0 {
+	if len(o.Id) == 0 {
 		return fmt.Errorf("repo_id is required")
 	}
-	if o.DataDir == "" {
-		return fmt.Errorf("data directory is required")
+	if o.Endpoint == "" {
+		return fmt.Errorf("endpoint is required")
 	}
 	if o.Tmpdir == "" {
 		return fmt.Errorf("tmp directory is required")

@@ -28,25 +28,21 @@ var sourceCommand = cli.Command{
 		},
 		cli.StringFlag{
 			Name:   "username, u",
-			Value:  "",
 			Usage:  "Basic auth username",
 			EnvVar: "REPO_USERNAME",
 		},
 		cli.StringFlag{
 			Name:   "password, pw",
-			Value:  "",
 			Usage:  "Basic auth password",
 			EnvVar: "REPO_PASSWORD",
 		},
 		cli.StringFlag{
 			Name:   "cert, c",
-			Value:  "",
 			Usage:  "TLS certificate file path",
 			EnvVar: "REPO_CERT_FILE",
 		},
 		cli.StringFlag{
 			Name:   "key, k",
-			Value:  "",
 			Usage:  "TLS private key file path",
 			EnvVar: "REPO_KEY_FILE",
 		},
@@ -54,6 +50,12 @@ var sourceCommand = cli.Command{
 			Name:  "mod",
 			Value: &cli.StringSlice{"registry", "s3"},
 			Usage: "set the module to load",
+		},
+		cli.StringFlag{
+			Name:   "data, d",
+			Value: "./data",
+			Usage: "repo data directory",
+			EnvVar: "REPO_DATA_DIR",
 		},
 		cli.StringFlag{
 			Name:  "max-multipart, mm",
@@ -105,10 +107,10 @@ func NewSource(opts *options.Options) (app.App, error) {
 			"failed to create temporary directory: %w", err)
 	}
 
-	if err := os.MkdirAll(opts.DataDir, 0755); err != nil {
+	if err := os.MkdirAll(src.config.DataDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create data directory: %w", err)
 	}
-	dbPath := filepath.Join(opts.DataDir, fmt.Sprintf("%s-%s", opts.RepoId, src.dbname))
+	dbPath := filepath.Join(src.config.DataDir, fmt.Sprintf("%s-%s", opts.Id, src.dbname))
 
 	var err error
 	src.storage, err = storage.NewStorage(opts.Backend, dbPath)

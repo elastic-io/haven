@@ -153,14 +153,19 @@ func GetFileID(filename string) (uint64, error) {
 	return stat.Ino, nil
 }
 
-func CalculateLargeFileMD5(filename string) (string, error) {
+func MustGetFileID(filename string) uint64 {
+	id, _ := GetFileID(filename)
+	return id
+}
+
+func CalculateLargeFileSHA256(filename string) (string, error) {
 	file, err := os.Open(filename)
 	if err != nil {
 		return "", err
 	}
 	defer file.Close()
 
-	hasher := md5.New()
+	hasher := sha256.New()
 
 	// 使用缓冲区分块读取
 	buffer := make([]byte, 8*types.KB) // 8KB 缓冲区
@@ -180,6 +185,15 @@ func CalculateLargeFileMD5(filename string) (string, error) {
 	}
 
 	return fmt.Sprintf("%x", hasher.Sum(nil)), nil
+}
+
+func FindKey(keys []string, key string) bool {
+	for _, k := range keys {
+		if k == key {
+			return true
+		}
+	}
+	return false
 }
 
 func SafeGo(fn func()) {
